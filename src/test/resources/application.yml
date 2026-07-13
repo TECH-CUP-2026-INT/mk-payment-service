@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: payment
+  datasource:
+    url: jdbc:h2:mem:payment_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+payment-order:
+  expiration-minutes: 60
+
+mercadopago:
+  base-url: https://api.mercadopago.com
+  connect-timeout-millis: 3000
+  read-timeout-millis: 5000
+  access-token: test-access-token
+  public-key: test-public-key
+  notification-url: https://example-test-tunnel.invalid/payment-orders/webhook
