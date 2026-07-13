@@ -1,0 +1,7 @@
+target/
+.git/
+.github/
+docs/
+site/
+*.md
+docker-compose.yml
