@@ -1,0 +1,37 @@
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:        #6a1b9a; /* morado */
+  --md-primary-fg-color--light: #8e24aa;
+  --md-primary-fg-color--dark:  #4a148c;
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: #ffffffb3;
+
+  --md-accent-fg-color:         #c9a227; /* dorado */
+  --md-accent-fg-color--transparent: #c9a2271a;
+}
+
+/* Modo oscuro */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #7b1fa2; /* morado */
+  --md-primary-fg-color--light: #ab47bc;
+  --md-primary-fg-color--dark:  #4a148c;
+
+  --md-accent-fg-color:         #d4af37; /* dorado */
+  --md-accent-fg-color--transparent: #d4af371a;
+}
+
+/* Enlaces destacados con el dorado en hover */
+.md-typeset a:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* Botón principal (index) en dorado sobre morado */
+.md-typeset .md-button--primary {
+  background-color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #2e1437;
+}
+.md-typeset .md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--light);
+  border-color: var(--md-primary-fg-color--light);
+  color: #ffffff;
+}
