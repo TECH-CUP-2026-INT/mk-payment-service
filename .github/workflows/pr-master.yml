@@ -1,9 +1,9 @@
-name: Payment Service - CI (PR to master)
+name: Payment Service - CI (PR to main)
 
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   build-test-analyze:

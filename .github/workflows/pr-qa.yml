@@ -1,9 +1,9 @@
-name: Payment Service - CI (PR to qa)
+name: Payment Service - CI (PR to develop)
 
 on:
   pull_request:
     branches:
-      - qa
+      - develop
 
 jobs:
   build-test-analyze:

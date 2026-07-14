@@ -3,9 +3,9 @@ name: Payment Service - CI (Push)
 on:
   push:
     branches:
-      - master
-      - qa
-      - "feature/**"
+      - main
+      - develop
+      - "feature_**"
 
 env:
   IMAGE_NAME: ${{ github.repository }}
@@ -83,7 +83,7 @@ jobs:
     name: Build & Publish Docker Image
     needs: build-test-analyze
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/qa'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     permissions:
       contents: read
       packages: write
@@ -126,7 +126,7 @@ jobs:
     name: Deploy a Azure App Service
     needs: dockerize-publish
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     environment: production
 
     steps:
@@ -135,4 +135,4 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          images: ghcr.io/${{ env.IMAGE_NAME }}:master
+          images: ghcr.io/${{ env.IMAGE_NAME }}:main
