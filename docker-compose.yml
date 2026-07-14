@@ -1,0 +1,28 @@
+services:
+  mk-payments:
+    build: ./
+    container_name: mk-payments
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/techcup_payments
+      SPRING_DATASOURCE_USERNAME: techcup
+      SPRING_DATASOURCE_PASSWORD: techcup
+    depends_on:
+      - postgres
+    restart: on-failure
+
+  postgres:
+    image: postgres:16
+    container_name: docker-payments-postgres
+    environment:
+      POSTGRES_USER: techcup
+      POSTGRES_PASSWORD: techcup
+      POSTGRES_DB: techcup_payments
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

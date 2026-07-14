@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN_PROD}
+  public-key: ${MP_PUBLIC_KEY_PROD}
+  notification-url: ${MP_NOTIFICATION_URL_PROD}

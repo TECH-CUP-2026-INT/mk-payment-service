@@ -6,26 +6,25 @@
 |----------|-------|
 | Base URL (local) | `http://localhost:8080` |
 | Formato | JSON |
-| Versión | `v1` (pendiente de definir prefijo) |
+| Documentación interactiva | `/swagger-ui.html` (Swagger UI) · `/v3/api-docs` (OpenAPI JSON) |
 
-!!! info "Estado actual"
-    El servicio se encuentra en fase de scaffolding. Los endpoints descritos a continuación representan el contrato objetivo del microservicio.
+!!! info "Contrato con Tournament Service"
+    `GET /payment-orders/{enrollmentId}` y `POST /payment-orders` ya son consumidos por `mk-tournament-service` (`PaymentServiceClientAdapter`). Cambiar el nombre de un campo de respuesta, aunque sea de mayúsculas a minúsculas, rompe ese consumidor en silencio — su adaptador nunca lanza excepción, solo degrada a `UNKNOWN`.
 
 ## Endpoints
 
-### Crear pago
+### Crear orden de pago — TC-PAY-01
 
-`POST /api/v1/payments`
+`POST /payment-orders`
 
 **Request body:**
 
 ```json
 {
-  "orderId": "ord-12345",
-  "userId": "usr-67890",
-  "amount": 150000.00,
-  "currency": "COP",
-  "method": "CREDIT_CARD"
+  "enrollmentId": "enr-12345",
+  "teamId": "team-001",
+  "tournamentId": "torneo-2026",
+  "amount": 50000.00
 }
 ```
 
@@ -33,68 +32,34 @@
 
 ```json
 {
-  "id": "pay-abc123",
-  "orderId": "ord-12345",
-  "userId": "usr-67890",
-  "amount": 150000.00,
-  "currency": "COP",
+  "paymentOrderId": "b3f1c2a0-1234-4a5b-9c0d-abc123456789",
   "status": "PENDING",
-  "createdAt": "2026-07-13T16:00:00Z"
+  "expiresAt": "2026-07-13T21:00:00"
 }
 ```
 
----
+**Errores:**
 
-### Consultar pago por ID
-
-`GET /api/v1/payments/{id}`
-
-**Response `200 OK`:**
-
-```json
-{
-  "id": "pay-abc123",
-  "orderId": "ord-12345",
-  "userId": "usr-67890",
-  "amount": 150000.00,
-  "currency": "COP",
-  "status": "COMPLETED",
-  "createdAt": "2026-07-13T16:00:00Z",
-  "updatedAt": "2026-07-13T16:05:00Z"
-}
-```
+| Código | Causa |
+|--------|-------|
+| `400` | Body inválido (campos faltantes, `amount` ≤ 0) |
+| `409` | Ya existe una orden para ese `enrollmentId` |
+| `422` | El monto está fuera del rango permitido por Mercado Pago para PSE |
 
 ---
 
-### Listar pagos por usuario
+### Enviar transacción PSE — TC-PAY-02
 
-`GET /api/v1/payments?userId={userId}`
-
-**Response `200 OK`:**
-
-```json
-[
-  {
-    "id": "pay-abc123",
-    "orderId": "ord-12345",
-    "amount": 150000.00,
-    "currency": "COP",
-    "status": "COMPLETED"
-  }
-]
-```
-
----
-
-### Actualizar estado de pago
-
-`PATCH /api/v1/payments/{id}/status`
+`POST /payment-orders/{enrollmentId}/pse`
 
 **Request body:**
 
 ```json
 {
-  "status": "COMPLETED"
+  "financialInstitution": "1007",
+  "payerEmail": "pagador@correo.com",
+  "identificationType": "CC",
+  "identificationNumber": "123456789"
 }
 ```
 
@@ -102,38 +67,119 @@
 
 ```json
 {
-  "id": "pay-abc123",
-  "status": "COMPLETED",
-  "updatedAt": "2026-07-13T16:05:00Z"
+  "status": "AWAITING_BANK_CONFIRMATION",
+  "externalResourceUrl": "https://www.mercadopago.com/pse/ticket/..."
 }
 ```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| `400` | Body inválido |
+| `404` | No existe una orden para ese `enrollmentId` |
+| `409` | La orden no está en estado `PENDING` |
+| `410` | La orden ya expiró (se persiste la expiración en el mismo request) |
+| `502` | Mercado Pago rechazó la solicitud — la orden queda en `PENDING` para reintento |
+
+---
+
+### Webhook de Mercado Pago — TC-PAY-03
+
+`POST /payment-orders/webhook`
+
+**Request body (enviado por Mercado Pago):**
+
+```json
+{
+  "action": "payment.updated",
+  "type": "payment",
+  "data": { "id": "1234567890" }
+}
+```
+
+**Response:** siempre `204 No Content`, incluso si `data.id` no corresponde a ninguna orden — Mercado Pago reintenta ante cualquier código de error, así que este endpoint nunca falla.
+
+!!! danger "Nunca se confía en el body"
+    El único dato que se usa del body es `data.id`. El estado real del pago se obtiene siempre llamando a la API de Mercado Pago (`GET /v1/payments/{id}`) — cualquier campo de estado que llegara en este body se ignora por diseño.
+
+---
+
+### Consultar estado de una orden — TC-PAY-04
+
+`GET /payment-orders/{enrollmentId}`
+
+**Response `200 OK`:**
+
+```json
+{
+  "status": "APPROVED"
+}
+```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| `404` | No existe una orden para ese `enrollmentId` |
+
+---
+
+### Consultar límites de PSE — TC-PAY-06
+
+`GET /payment-methods/limits?amount={amount}`
+
+**Response `200 OK`:**
+
+```json
+{
+  "valid": true,
+  "minAllowedAmount": 10000.00,
+  "maxAllowedAmount": 500000.00
+}
+```
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| `404` | Aún no se ha ejecutado la sincronización de límites (`SyncPaymentMethodsJob`, corre diario) |
 
 ## Códigos de respuesta
 
 | Código | Descripción |
 |--------|-------------|
 | `200` | Operación exitosa |
-| `201` | Recurso creado |
-| `400` | Solicitud inválida |
-| `404` | Pago no encontrado |
-| `409` | Conflicto de estado |
-| `500` | Error interno del servidor |
+| `201` | Orden de pago creada |
+| `204` | Webhook procesado (siempre, sin importar el resultado interno) |
+| `400` | Body inválido (validación de Bean Validation) |
+| `404` | Orden de pago o límites de método de pago no encontrados |
+| `409` | Conflicto de estado (duplicado o transición inválida) |
+| `410` | La orden ya expiró |
+| `422` | Monto fuera de los límites permitidos |
+| `502` | Mercado Pago rechazó o no respondió la solicitud |
 
 ## Modelo de estados
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING
-    PENDING --> COMPLETED
-    PENDING --> FAILED
-    PENDING --> CANCELLED
-    COMPLETED --> [*]
-    FAILED --> [*]
-    CANCELLED --> [*]
+    PENDING --> AWAITING_BANK_CONFIRMATION : SubmitPseTransaction
+    PENDING --> EXPIRED : 60 min sin confirmar
+    AWAITING_BANK_CONFIRMATION --> APPROVED : webhook aprueba
+    AWAITING_BANK_CONFIRMATION --> REJECTED : webhook rechaza
+    AWAITING_BANK_CONFIRMATION --> EXPIRED : 60 min sin confirmar
+    APPROVED --> [*]
+    REJECTED --> [*]
+    EXPIRED --> [*]
 ```
+
+!!! note "EXPIRED es interno"
+    `EXPIRED` nunca se serializa tal cual en la API pública — `GetPaymentOrderStatus` lo mapea a `"REJECTED"` en la respuesta. El dominio y la base de datos conservan `EXPIRED` para auditoría interna.
 
 ## Convenciones
 
-- Los identificadores son strings opacos generados por el servicio.
-- Los montos se expresan como números decimales con dos decimales de precisión.
-- Las fechas siguen el formato ISO 8601 en UTC.
+- Los identificadores de orden (`paymentOrderId`) son UUID generados por este servicio.
+- Los montos se expresan como números decimales con dos decimales de precisión (persistidos como `Decimal128` en MongoDB).
+- Las fechas siguen `LocalDateTime` en formato ISO 8601 sin zona horaria explícita.
+- `enrollmentId` es el identificador opaco que provee `mk-tournament-service`; una orden por `enrollmentId`.

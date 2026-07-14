@@ -2,7 +2,7 @@
 
 Bienvenido a la documentación técnica del **microservicio de pagos** del sistema **Astro Merge**, desarrollado por el equipo **TECH-CUP 2026 INT**.
 
-Este servicio es responsable de gestionar las transacciones de pago dentro del ecosistema de microservicios de TechCup.
+Procesa el pago de inscripciones a torneos mediante **Mercado Pago**, exclusivamente con **PSE** (Pagos Seguros en Línea), y expone el contrato REST que ya consume `mk-tournament-service`.
 
 ## Inicio rápido
 
@@ -10,12 +10,13 @@ Este servicio es responsable de gestionar las transacciones de pago dentro del e
 
     - Java 21
     - Maven 3.9+
-    - MongoDB (cuando se habilite la capa de persistencia)
+    - MongoDB 7 (local vía `docker compose up -d mongodb`, ver `docker-compose.yml`)
+    - Credenciales de sandbox de Mercado Pago (ver [Configuración](configuracion.md))
 
 === "Ejecutar localmente"
 
     ```bash
-    mvn spring-boot:run
+    ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
     ```
 
 === "Ejecutar pruebas"
