@@ -60,7 +60,8 @@ jobs:
             -Dsonar.projectKey=TECH-CUP-2026-INT_mk-payment-service \
             -Dsonar.organization=tech-cup-2026-int \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
       - name: Empaquetar (jar)
         if: success()
