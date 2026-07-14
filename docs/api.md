@@ -180,6 +180,6 @@ stateDiagram-v2
 ## Convenciones
 
 - Los identificadores de orden (`paymentOrderId`) son UUID generados por este servicio.
-- Los montos se expresan como números decimales con dos decimales de precisión (`NUMERIC(12,2)`).
+- Los montos se expresan como números decimales con dos decimales de precisión (persistidos como `Decimal128` en MongoDB).
 - Las fechas siguen `LocalDateTime` en formato ISO 8601 sin zona horaria explícita.
 - `enrollmentId` es el identificador opaco que provee `mk-tournament-service`; una orden por `enrollmentId`.

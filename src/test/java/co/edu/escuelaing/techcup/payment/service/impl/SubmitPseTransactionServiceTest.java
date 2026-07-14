@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -135,7 +135,7 @@ class SubmitPseTransactionServiceTest {
         void stillThrowsWhenSaveConflicts() {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().minusMinutes(1));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
-            when(paymentOrderRepository.save(order)).thenThrow(new ObjectOptimisticLockingFailureException(PaymentOrder.class, order.getId()));
+            when(paymentOrderRepository.save(order)).thenThrow(new OptimisticLockingFailureException("optimistic lock conflict"));
 
             assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
                     .isInstanceOf(PaymentOrderExpiredException.class);

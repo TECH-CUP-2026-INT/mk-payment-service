@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -135,7 +135,7 @@ class ProcessPaymentWebhookServiceTest {
             when(paymentOrderRepository.findByMpPaymentId("mp-7")).thenReturn(Optional.of(order));
             when(paymentGateway.getPaymentStatus("mp-7")).thenReturn(new PaymentStatusResult("mp-7", "approved"));
             when(paymentOrderRepository.save(order))
-                    .thenThrow(new ObjectOptimisticLockingFailureException(PaymentOrder.class, order.getId()));
+                    .thenThrow(new OptimisticLockingFailureException("optimistic lock conflict"));
 
             assertThatNoException().isThrownBy(() -> service.process("mp-7"));
         }

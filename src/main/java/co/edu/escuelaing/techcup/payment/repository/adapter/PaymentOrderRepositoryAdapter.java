@@ -1,8 +1,8 @@
 package co.edu.escuelaing.techcup.payment.repository.adapter;
 
-import co.edu.escuelaing.techcup.payment.entity.PaymentOrderEntity;
+import co.edu.escuelaing.techcup.payment.document.PaymentOrderDocument;
 import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderPersistenceMapper;
-import co.edu.escuelaing.techcup.payment.repository.jpa.PaymentOrderJpaRepository;
+import co.edu.escuelaing.techcup.payment.repository.mongo.PaymentOrderMongoRepository;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
@@ -15,37 +15,37 @@ import java.util.Optional;
 @Component
 public class PaymentOrderRepositoryAdapter implements PaymentOrderRepositoryPort {
 
-    private final PaymentOrderJpaRepository jpaRepository;
+    private final PaymentOrderMongoRepository mongoRepository;
 
-    public PaymentOrderRepositoryAdapter(PaymentOrderJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
+    public PaymentOrderRepositoryAdapter(PaymentOrderMongoRepository mongoRepository) {
+        this.mongoRepository = mongoRepository;
     }
 
     @Override
     public PaymentOrder save(PaymentOrder paymentOrder) {
-        PaymentOrderEntity saved = jpaRepository.save(PaymentOrderPersistenceMapper.toEntity(paymentOrder));
+        PaymentOrderDocument saved = mongoRepository.save(PaymentOrderPersistenceMapper.toEntity(paymentOrder));
         return PaymentOrderPersistenceMapper.toDomain(saved);
     }
 
     @Override
     public boolean existsByEnrollmentId(String enrollmentId) {
-        return jpaRepository.existsByEnrollmentId(enrollmentId);
+        return mongoRepository.existsByEnrollmentId(enrollmentId);
     }
 
     @Override
     public Optional<PaymentOrder> findByEnrollmentId(String enrollmentId) {
-        return jpaRepository.findByEnrollmentId(enrollmentId).map(PaymentOrderPersistenceMapper::toDomain);
+        return mongoRepository.findByEnrollmentId(enrollmentId).map(PaymentOrderPersistenceMapper::toDomain);
     }
 
     @Override
     public Optional<PaymentOrder> findByMpPaymentId(String mpPaymentId) {
-        return jpaRepository.findByMpPaymentId(mpPaymentId).map(PaymentOrderPersistenceMapper::toDomain);
+        return mongoRepository.findByMpPaymentId(mpPaymentId).map(PaymentOrderPersistenceMapper::toDomain);
     }
 
     @Override
     public List<PaymentOrder> findByStatusInAndExpiresAtBefore(List<PaymentOrderStatus> statuses, LocalDateTime before) {
         List<String> statusNames = statuses.stream().map(Enum::name).toList();
-        return jpaRepository.findByStatusInAndExpiresAtBefore(statusNames, before).stream()
+        return mongoRepository.findByStatusInAndExpiresAtBefore(statusNames, before).stream()
                 .map(PaymentOrderPersistenceMapper::toDomain)
                 .toList();
     }
