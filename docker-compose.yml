@@ -5,22 +5,24 @@ services:
     ports:
       - "8081:8080"
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://techcup:techcup@mongodb:27017/techcup_payments?authSource=admin
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/techcup_payments
+      SPRING_DATASOURCE_USERNAME: techcup
+      SPRING_DATASOURCE_PASSWORD: techcup
     depends_on:
-      - mongodb
+      - postgres
     restart: on-failure
 
-  mongodb:
-    image: mongo:7.0
-    container_name: docker-payments-mongo
+  postgres:
+    image: postgres:16
+    container_name: docker-payments-postgres
     environment:
-      MONGO_INITDB_ROOT_USERNAME: techcup
-      MONGO_INITDB_ROOT_PASSWORD: techcup
-      MONGO_INITDB_DATABASE: techcup_payments
+      POSTGRES_USER: techcup
+      POSTGRES_PASSWORD: techcup
+      POSTGRES_DB: techcup_payments
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  mongo_data:
+  postgres_data:

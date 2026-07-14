@@ -1,8 +1,8 @@
 package co.edu.escuelaing.techcup.payment.repository.adapter;
 
-import co.edu.escuelaing.techcup.payment.document.PaymentMethodLimitsDocument;
+import co.edu.escuelaing.techcup.payment.entity.PaymentMethodLimitsEntity;
 import co.edu.escuelaing.techcup.payment.mapper.PaymentMethodLimitsPersistenceMapper;
-import co.edu.escuelaing.techcup.payment.repository.mongo.PaymentMethodLimitsMongoRepository;
+import co.edu.escuelaing.techcup.payment.repository.jpa.PaymentMethodLimitsJpaRepository;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodLimitsRepositoryPort;
 import org.springframework.stereotype.Component;
@@ -12,20 +12,20 @@ import java.util.Optional;
 @Component
 public class PaymentMethodLimitsRepositoryAdapter implements PaymentMethodLimitsRepositoryPort {
 
-    private final PaymentMethodLimitsMongoRepository mongoRepository;
+    private final PaymentMethodLimitsJpaRepository jpaRepository;
 
-    public PaymentMethodLimitsRepositoryAdapter(PaymentMethodLimitsMongoRepository mongoRepository) {
-        this.mongoRepository = mongoRepository;
+    public PaymentMethodLimitsRepositoryAdapter(PaymentMethodLimitsJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
     }
 
     @Override
     public Optional<PaymentMethodLimits> findById(String paymentMethodId) {
-        return mongoRepository.findById(paymentMethodId).map(PaymentMethodLimitsPersistenceMapper::toDomain);
+        return jpaRepository.findById(paymentMethodId).map(PaymentMethodLimitsPersistenceMapper::toDomain);
     }
 
     @Override
     public PaymentMethodLimits save(PaymentMethodLimits limits) {
-        PaymentMethodLimitsDocument saved = mongoRepository.save(PaymentMethodLimitsPersistenceMapper.toEntity(limits));
+        PaymentMethodLimitsEntity saved = jpaRepository.save(PaymentMethodLimitsPersistenceMapper.toEntity(limits));
         return PaymentMethodLimitsPersistenceMapper.toDomain(saved);
     }
 }

@@ -1,19 +1,21 @@
-package co.edu.escuelaing.techcup.payment.document;
+package co.edu.escuelaing.techcup.payment.entity;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Document(collection = "payment_method_limits")
+@Entity
+@Table(name = "payment_method_limits")
 @Getter
 @Setter
 @NoArgsConstructor
-public class PaymentMethodLimitsDocument {
+public class PaymentMethodLimitsEntity {
 
     @Id
     private String paymentMethodId;

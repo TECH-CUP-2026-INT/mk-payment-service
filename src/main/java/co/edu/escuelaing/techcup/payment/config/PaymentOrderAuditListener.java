@@ -1,22 +1,24 @@
 package co.edu.escuelaing.techcup.payment.config;
 
-import co.edu.escuelaing.techcup.payment.document.PaymentOrderDocument;
-import org.springframework.data.mongodb.core.mapping.event.AbstractMongoEventListener;
-import org.springframework.data.mongodb.core.mapping.event.BeforeConvertEvent;
-import org.springframework.stereotype.Component;
+import co.edu.escuelaing.techcup.payment.entity.PaymentOrderEntity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 import java.time.LocalDateTime;
 
-@Component
-public class PaymentOrderAuditListener extends AbstractMongoEventListener<PaymentOrderDocument> {
+public class PaymentOrderAuditListener {
 
-    @Override
-    public void onBeforeConvert(BeforeConvertEvent<PaymentOrderDocument> event) {
-        PaymentOrderDocument document = event.getSource();
+    @PrePersist
+    public void onPrePersist(PaymentOrderEntity entity) {
         LocalDateTime now = LocalDateTime.now();
-        if (document.getCreatedAt() == null) {
-            document.setCreatedAt(now);
+        if (entity.getCreatedAt() == null) {
+            entity.setCreatedAt(now);
         }
-        document.setUpdatedAt(now);
+        entity.setUpdatedAt(now);
+    }
+
+    @PreUpdate
+    public void onPreUpdate(PaymentOrderEntity entity) {
+        entity.setUpdatedAt(LocalDateTime.now());
     }
 }

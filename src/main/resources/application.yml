@@ -3,10 +3,16 @@ spring:
     name: payment
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  data:
-    mongodb:
-      uuid-representation: standard
-      auto-index-creation: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
 
 payment-order:
   expiration-minutes: 60
