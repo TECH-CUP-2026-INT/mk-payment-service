@@ -1,7 +1,8 @@
 spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://techcup:techcup@localhost:27017/techcup_payments?authSource=admin}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/techcup_payments}
+    username: ${SPRING_DATASOURCE_USERNAME:techcup}
+    password: ${SPRING_DATASOURCE_PASSWORD:techcup}
 
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN_DEV}

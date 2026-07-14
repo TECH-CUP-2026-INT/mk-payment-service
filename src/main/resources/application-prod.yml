@@ -1,7 +1,8 @@
 spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN_PROD}

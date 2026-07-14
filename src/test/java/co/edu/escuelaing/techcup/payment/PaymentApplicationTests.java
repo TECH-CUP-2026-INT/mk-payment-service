@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@Import(MongoTestcontainersConfiguration.class)
+@Import(PostgresTestcontainersConfiguration.class)
 class PaymentApplicationTests {
 
 	@Test
