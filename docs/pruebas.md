@@ -2,75 +2,95 @@
 
 ## Estrategia de testing
 
-El servicio aplica una pirámide de pruebas con tres niveles:
-
 ```mermaid
 flowchart TB
-    E2E["E2E / Integration Tests"]
-    INT["Integration Tests"]
-    UNIT["Unit Tests"]
+    BDD["BDD (Cucumber) — 2 features, flujos de negocio completos"]
+    UNIT["Unitarias (JUnit 5 + Mockito + AssertJ) — dominio y casos de uso"]
+    CTX["Smoke test — carga del contexto de Spring Boot"]
 
-    E2E --- INT --- UNIT
+    BDD --- UNIT --- CTX
 ```
 
-| Nivel | Alcance | Herramientas |
-|-------|---------|--------------|
-| Unitarias | `service/impl`, mappers, validadores | JUnit 5, Mockito |
-| Integración | Repositorios, adaptadores, contexto Spring | Spring Boot Test, Testcontainers |
-| E2E | Flujos completos HTTP | MockMvc / RestAssured |
+| Nivel | Alcance | Herramientas | ¿Levanta Spring? |
+|-------|---------|--------------|-------------------|
+| Unitarias | `service/` (dominio), `service/impl` (casos de uso), `mapper/` | JUnit 5, Mockito, AssertJ | No |
+| BDD | Flujos de negocio completos de cara al consumidor (`CreatePaymentOrder`, `SubmitPseTransaction`) | Cucumber (`cucumber-java` + `cucumber-junit-platform-engine`) | No |
+| Smoke | El contexto de Spring Boot arranca correctamente con Flyway + JPA | `@SpringBootTest` | Sí (contra H2) |
+
+Los tests de `service/impl` **mockean solo los puertos** (`XxxUseCase`, `XxxRepositoryPort`, `PaymentGatewayPort`) — nunca instancian un adaptador real ni levantan contexto de Spring. Los pasos de Cucumber siguen el mismo principio: `new XxxService(mock(Port.class))` directo, sin `cucumber-spring`.
+
+## Base de datos en pruebas
+
+Ninguna prueba requiere PostgreSQL corriendo. `src/test/resources/application.yml` configura H2 en memoria en modo compatibilidad PostgreSQL (`MODE=PostgreSQL`), y Flyway aplica la misma migración (`V1__init.sql`) que en producción — así se valida que el esquema real es compatible sin pagar el costo de un contenedor en cada corrida.
 
 ## Ejecución
 
 ### Todas las pruebas
 
 ```bash
-mvn test
+./mvnw test
 ```
 
-### Pruebas de un paquete específico
+### Build completo (incluye BDD)
 
 ```bash
-mvn test -Dtest=PaymentApplicationTests
+./mvnw verify
 ```
 
-### Con reporte de cobertura
+### Una clase específica
 
 ```bash
-mvn test jacoco:report
+./mvnw test -Dtest=CreatePaymentOrderServiceTest
 ```
 
-!!! note "JaCoCo"
-    La integración con JaCoCo se configurará cuando se agregue el plugin al `pom.xml`.
+!!! note "Cobertura (JaCoCo)"
+    Aún no está integrado en el `pom.xml`. Pendiente de agregar si el equipo lo requiere para SonarQube.
 
-## Pruebas actuales
+## Suite actual
 
-| Clase | Tipo | Descripción |
-|-------|------|-------------|
-| `PaymentApplicationTests` | Integración | Verifica que el contexto de Spring Boot carga correctamente |
+**58 pruebas en total**, todas verdes (`./mvnw clean verify`):
 
-## Casos de prueba planificados
+### Dominio
 
-### Capa de dominio (`service/impl`)
+| Clase | Cubre |
+|-------|-------|
+| `PaymentOrderTest` | `create`, `startPseTransaction`, `approve`, `reject`, `expire` (incluida su idempotencia al llamarse dos veces) y `reconstruct` |
 
-- [ ] Crear pago con datos válidos retorna estado `PENDING`.
-- [ ] Crear pago con monto negativo lanza excepción de validación.
-- [ ] Actualizar estado de pago inexistente lanza `PaymentNotFoundException`.
-- [ ] No se permite transición de `COMPLETED` a `PENDING`.
+### Casos de uso (`service/impl`)
 
-### Capa de controlador (`controller/impl`)
+| Clase | Escenarios |
+|-------|------------|
+| `CreatePaymentOrderServiceTest` | Camino feliz, `AmountOutOfRangeException` (por encima/debajo del rango, sin límites cacheados), `DuplicateEnrollmentOrderException` |
+| `SubmitPseTransactionServiceTest` | Camino feliz, `PaymentOrderNotFoundException`, `PaymentOrderNotPendingException`, `PaymentOrderExpiredException` (con y sin conflicto de optimistic locking al persistir la expiración), `PaymentGatewayException` |
+| `ProcessPaymentWebhookServiceTest` | Aprobación/rechazo dirigidos solo por `PaymentGatewayPort.getPaymentStatus`, nunca por el body; fallo del gateway, orden no encontrada, notificación duplicada y conflicto de optimistic locking — todos como no-op silencioso |
+| `GetPaymentOrderStatusServiceTest` | Camino feliz, `PaymentOrderNotFoundException` |
+| `ExpireTransactionServiceTest` | Expira el lote de órdenes vencidas; un conflicto de optimistic locking en una orden no aborta el resto del lote |
+| `GetPaymentMethodLimitsServiceTest` | Camino feliz, `PaymentMethodLimitsNotFoundException` |
+| `SyncPaymentMethodsServiceTest` | Upsert cuando Mercado Pago devuelve `pse`, no-op cuando no lo devuelve |
 
-- [ ] `POST /api/v1/payments` retorna `201` con body válido.
-- [ ] `POST /api/v1/payments` retorna `400` con body inválido.
-- [ ] `GET /api/v1/payments/{id}` retorna `404` si no existe.
+### Mappers y contrato
 
-### Capa de repositorio (`repository`)
+| Clase | Cubre |
+|-------|-------|
+| `PaymentOrderRestMapperTest` | `EXPIRED` → `"REJECTED"` en la respuesta pública; el resto de estados se serializan tal cual |
+| `PaymentOrderStatusResponseContractTest` | El campo `status` se serializa exactamente como lo espera `PaymentServiceClientAdapter` de `mk-tournament-service` |
 
-- [ ] Persistir y recuperar un documento de pago en MongoDB.
-- [ ] Consultar pagos por `userId` retorna lista filtrada.
+### BDD (Cucumber)
 
-## Buenas prácticas
+| Feature | Escenarios |
+|---------|------------|
+| `create_payment_order.feature` | Crear orden exitosamente, monto fuera de rango, `enrollmentId` duplicado |
+| `submit_pse_transaction.feature` | Enviar PSE exitosamente, orden no pendiente, orden expirada, orden inexistente |
 
-1. Nombrar tests con el patrón `should{ExpectedBehavior}_when{Condition}`.
-2. Usar `@DisplayName` para describir el escenario en lenguaje natural.
-3. Aislar la capa de dominio: no levantar el contexto web en tests unitarios.
-4. Usar Testcontainers para pruebas de integración con MongoDB real.
+### Smoke test
+
+| Clase | Descripción |
+|-------|-------------|
+| `PaymentApplicationTests` | Verifica que el contexto de Spring Boot carga correctamente (JPA + Flyway contra H2) |
+
+## Buenas prácticas de este proyecto
+
+1. `@Nested` + `@DisplayName` en español describiendo el comportamiento esperado, no el nombre técnico del método.
+2. Un test por cada excepción de dominio listada en `SKILL.md` — no se documenta una regla de negocio sin su test correspondiente.
+3. Los mocks se configuran por escenario dentro del propio test o step, nunca compartidos entre pruebas.
+4. Los pasos de Cucumber reconstruyen el estado con `PaymentOrder.reconstruct(...)` para simular condiciones específicas (por ejemplo, una orden `PENDING` con `expiresAt` en el pasado), no dependen de temporizadores reales.
