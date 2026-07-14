@@ -18,12 +18,12 @@ flowchart TB
     end
 
     subgraph driven["Driven Adapters"]
-        JPAREPO["repository/jpa"]
+        MONGOREPO["repository/mongo"]
         ADAPTER["repository/adapter"]
     end
 
     subgraph external["Sistemas externos"]
-        DB[("PostgreSQL")]
+        DB[("MongoDB")]
         MP["Mercado Pago API"]
     end
 
@@ -31,7 +31,7 @@ flowchart TB
     SCHED --> PORTS
     PORTS --> SVC --> DOM
     SVC --> ADAPTER
-    ADAPTER --> JPAREPO --> DB
+    ADAPTER --> MONGOREPO --> DB
     ADAPTER --> MP
 ```
 
@@ -45,12 +45,12 @@ src/main/java/co/edu/escuelaing/techcup/payment/
 ├── dto/                        ← DATA TRANSFER OBJECTS
 │   ├── request/                (Records for HTTP Requests)
 │   └── response/               (Records for HTTP Responses)
-├── entity/                     ← PERSISTENCE LAYER (JPA Entities, plano)
+├── document/                   ← PERSISTENCE LAYER (MongoDB Documents, plano)
 ├── exception/                  ← SYSTEM EXCEPTIONS
-├── mapper/                     ← Clases estáticas: dominio↔entidad, dominio↔DTO
+├── mapper/                     ← Clases estáticas: dominio↔documento, dominio↔DTO
 ├── repository/                 ← REPOSITORIES & ADAPTERS
-│   ├── jpa/                    (Spring Data JpaRepository interfaces)
-│   └── adapter/                (Outbound Ports Implementation: JPA + Mercado Pago)
+│   ├── mongo/                  (Spring Data MongoRepository interfaces)
+│   └── adapter/                (Outbound Ports Implementation: MongoDB + Mercado Pago)
 ├── service/                    ← DOMAIN / CORE LAYER
 │   ├── ports/                  (Inbound/Outbound Interfaces)
 │   └── impl/                   (Use Cases and Business Rules)
@@ -65,7 +65,7 @@ src/main/java/co/edu/escuelaing/techcup/payment/
 | Driving (HTTP) | `controller/impl` | Exponer endpoints HTTP, validar entrada |
 | Driving (cron) | `scheduler` | Disparar casos de uso por tiempo en vez de HTTP |
 | DTO | `dto` | Contratos de entrada y salida de la API |
-| Entity | `entity` | Modelos de persistencia JPA |
+| Document | `document` | Modelos de persistencia MongoDB |
 | Exception | `exception` | Excepciones de dominio y manejadores globales |
 | Mapper | `mapper` | Conversión entre DTO, dominio y entidades |
 | Repository | `repository` | Acceso a datos e implementación de puertos salientes |
@@ -76,13 +76,13 @@ src/main/java/co/edu/escuelaing/techcup/payment/
 1. El cliente HTTP invoca un endpoint en `controller/impl` (o el cron dispara un job en `scheduler`).
 2. El controlador/job delega al puerto de entrada correspondiente en `service/ports` (`XxxUseCase`).
 3. `service/impl` ejecuta las reglas de aplicación, delegando las reglas de negocio del agregado al dominio (`service`, paquete raíz).
-4. Si se requiere persistencia, se invoca el puerto de salida (`XxxRepositoryPort`) implementado en `repository/adapter`, que usa `repository/jpa` para hablar con PostgreSQL.
+4. Si se requiere persistencia, se invoca el puerto de salida (`XxxRepositoryPort`) implementado en `repository/adapter`, que usa `repository/mongo` para hablar con MongoDB.
 5. Si se requiere hablar con Mercado Pago, se invoca `PaymentGatewayPort`, implementado por `MercadoPagoGatewayAdapter` vía `RestClient`.
 6. El resultado se mapea a un DTO de respuesta (`mapper/XxxRestMapper`) y se retorna al cliente.
 
 ## Principios de diseño
 
-- **Inversión de dependencias**: el dominio no depende de Spring, JPA, ni de HTTP.
+- **Inversión de dependencias**: el dominio no depende de Spring, MongoDB, ni de HTTP.
 - **Single Responsibility**: cada capa tiene una responsabilidad clara.
 - **Testabilidad**: los casos de uso se prueban sin levantar el contexto web completo.
 - **Evolución independiente**: los adaptadores pueden cambiar sin afectar el dominio.

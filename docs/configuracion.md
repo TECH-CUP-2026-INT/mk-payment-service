@@ -6,7 +6,7 @@
 |-------------|----------------|
 | JDK | 21 |
 | Maven | 3.9 (o usar `./mvnw`, ya incluido) |
-| PostgreSQL | 16 (local vía `docker-compose.yml`) |
+| MongoDB | 7.0 (local vía `docker-compose.yml`) |
 | Python (MkDocs) | 3.10+ |
 
 ## Perfiles de Spring
@@ -26,11 +26,9 @@ Se activa con `SPRING_PROFILES_ACTIVE` (por defecto `dev` si no se define, ver `
 
 | Variable | Descripción | Valor por defecto (perfil `dev`) |
 |----------|-------------|-----------------------------------|
-| `SPRING_DATASOURCE_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/techcup_payments` |
-| `SPRING_DATASOURCE_USERNAME` | Usuario de la base de datos | `techcup` |
-| `SPRING_DATASOURCE_PASSWORD` | Contraseña de la base de datos | `techcup` |
+| `SPRING_DATA_MONGODB_URI` | URI de conexión a MongoDB | `mongodb://techcup:techcup@localhost:27017/techcup_payments?authSource=admin` |
 
-En `prod` estas tres variables son **obligatorias**, sin valor por defecto — el servicio no arranca sin ellas.
+En `prod` esta variable es **obligatoria**, sin valor por defecto — el servicio no arranca sin ella.
 
 ### Mercado Pago
 
@@ -56,11 +54,10 @@ spring:
     name: payment
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  flyway:
-    enabled: true
+  data:
+    mongodb:
+      uuid-representation: standard
+      auto-index-creation: true
 
 mercadopago:
   base-url: https://api.mercadopago.com
@@ -72,10 +69,9 @@ mercadopago:
 
 ```yaml
 spring:
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/techcup_payments}
-    username: ${SPRING_DATASOURCE_USERNAME:techcup}
-    password: ${SPRING_DATASOURCE_PASSWORD:techcup}
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://techcup:techcup@localhost:27017/techcup_payments?authSource=admin}
 
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN_DEV}
@@ -88,10 +84,10 @@ mercadopago:
 ## Base de datos local con Docker
 
 ```bash
-docker compose up -d postgres
+docker compose up -d mongodb
 ```
 
-Levanta Postgres 16 con la base `techcup_payments` y usuario/clave `techcup`/`techcup` (coincide con los defaults de `application-dev.yml`). El esquema lo aplica Flyway automáticamente al arrancar el servicio (`src/main/resources/db/migration/V1__init.sql`).
+Levanta MongoDB 7.0 con la base `techcup_payments` y usuario root `techcup`/`techcup` (coincide con los defaults de `application-dev.yml`). No hay migraciones que aplicar: los índices (únicos en `enrollmentId`/`idempotencyKey`, compuesto en `status`/`expiresAt`) se declaran por anotación en `PaymentOrderDocument` y se crean automáticamente al arrancar (`spring.data.mongodb.auto-index-creation: true`).
 
 ## Ejecución local
 
@@ -107,7 +103,7 @@ Levanta Postgres 16 con la base `techcup_payments` y usuario/clave `techcup`/`te
 ./mvnw test
 ```
 
-Las pruebas **no** requieren Postgres levantado: corren contra H2 en memoria en modo compatibilidad PostgreSQL (`src/test/resources/application.yml`), aplicando la misma migración de Flyway.
+Las pruebas requieren Docker disponible: Testcontainers levanta un contenedor MongoDB real (`mongo:7.0`) automáticamente para el smoke test de contexto (`PaymentApplicationTests`), sin configuración estática — la URI se inyecta en tiempo de ejecución vía `@ServiceConnection`.
 
 ### Generar JAR
 
@@ -173,8 +169,7 @@ mk-payment-service/
     │   └── resources/
     │       ├── application.yml
     │       ├── application-dev.yml
-    │       ├── application-prod.yml
-    │       └── db/migration/V1__init.sql
+    │       └── application-prod.yml
     └── test/
         ├── java/
         └── resources/

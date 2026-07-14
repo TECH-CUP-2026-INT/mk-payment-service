@@ -10,7 +10,7 @@ Procesa el pago de inscripciones a torneos mediante **Mercado Pago**, exclusivam
 
     - Java 21
     - Maven 3.9+
-    - PostgreSQL 16 (local vía `docker compose up -d postgres`, ver `docker-compose.yml`)
+    - MongoDB 7 (local vía `docker compose up -d mongodb`, ver `docker-compose.yml`)
     - Credenciales de sandbox de Mercado Pago (ver [Configuración](configuracion.md))
 
 === "Ejecutar localmente"

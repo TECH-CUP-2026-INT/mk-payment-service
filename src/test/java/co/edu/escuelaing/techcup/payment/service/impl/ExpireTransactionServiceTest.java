@@ -7,7 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -69,7 +69,7 @@ class ExpireTransactionServiceTest {
             when(paymentOrderRepository.findByStatusInAndExpiresAtBefore(any(), any()))
                     .thenReturn(List.of(conflicting, healthy));
             when(paymentOrderRepository.save(conflicting))
-                    .thenThrow(new ObjectOptimisticLockingFailureException(PaymentOrder.class, conflicting.getId()));
+                    .thenThrow(new OptimisticLockingFailureException("optimistic lock conflict"));
             when(paymentOrderRepository.save(healthy)).thenAnswer(invocation -> invocation.getArgument(0));
 
             assertThatNoException().isThrownBy(() -> service.expireDueOrders());

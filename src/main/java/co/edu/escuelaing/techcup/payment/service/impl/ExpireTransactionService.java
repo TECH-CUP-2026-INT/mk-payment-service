@@ -6,7 +6,7 @@ import co.edu.escuelaing.techcup.payment.service.ports.ExpireTransactionUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -33,7 +33,7 @@ public class ExpireTransactionService implements ExpireTransactionUseCase {
             paymentOrder.expire();
             try {
                 paymentOrderRepository.save(paymentOrder);
-            } catch (ObjectOptimisticLockingFailureException ex) {
+            } catch (OptimisticLockingFailureException ex) {
                 // Another writer (the webhook) already resolved this order first -
                 // one conflicting order must not abort the rest of the batch.
                 log.info("Conflicto de versión al expirar la orden {}, otro proceso ya la actualizó primero",

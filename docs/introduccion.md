@@ -21,7 +21,7 @@ Proporcionar un microservicio que permita:
 !!! success "Incluido"
     - Los 7 casos de uso del ciclo de vida de una orden de pago: `CreatePaymentOrder`, `SubmitPseTransaction`, `ProcessPaymentWebhook`, `GetPaymentOrderStatus`, `ExpireTransaction`, `GetPaymentMethodLimits`, `SyncPaymentMethods`.
     - Arquitectura hexagonal con separación de capas (ver [Arquitectura](arquitectura.md)).
-    - Persistencia en PostgreSQL con migraciones versionadas (Flyway) y optimistic locking.
+    - Persistencia en MongoDB (Spring Data MongoDB) con índices declarados por anotación y optimistic locking.
     - Integración con la API real de Mercado Pago (`/v1/payments`, `/v1/payment_methods`) vía `RestClient`.
     - Documentación interactiva de la API con Swagger UI (springdoc-openapi).
     - Documentación técnica con MkDocs.
@@ -37,9 +37,8 @@ Proporcionar un microservicio que permita:
 |------------|------------|
 | Lenguaje | Java 21 |
 | Framework | Spring Boot 3.5.6 |
-| Persistencia | PostgreSQL 16 + JPA/Hibernate |
-| Migraciones | Flyway |
-| Mapeo | Clases estáticas propias (dominio↔entidad, dominio↔DTO) — sin MapStruct |
+| Persistencia | MongoDB 7 + Spring Data MongoDB |
+| Mapeo | Clases estáticas propias (dominio↔documento, dominio↔DTO) — sin MapStruct |
 | Pasarela de pago | Mercado Pago (PSE), vía `RestClient` |
 | Pruebas | JUnit 5, Mockito, AssertJ, Cucumber (BDD) |
 | Documentación de API | springdoc-openapi (Swagger UI) |

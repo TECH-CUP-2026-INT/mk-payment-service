@@ -11,7 +11,7 @@ import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPor
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.SubmitPseTransactionUseCase;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -73,7 +73,7 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
             paymentOrder.expire();
             try {
                 paymentOrderRepository.save(paymentOrder);
-            } catch (ObjectOptimisticLockingFailureException ex) {
+            } catch (OptimisticLockingFailureException ex) {
                 // Another writer (ExpireTransactionJob or the webhook) already
                 // resolved this order first - the 410 response below still holds.
             }

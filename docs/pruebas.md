@@ -15,13 +15,13 @@ flowchart TB
 |-------|---------|--------------|-------------------|
 | Unitarias | `service/` (dominio), `service/impl` (casos de uso), `mapper/` | JUnit 5, Mockito, AssertJ | No |
 | BDD | Flujos de negocio completos de cara al consumidor (`CreatePaymentOrder`, `SubmitPseTransaction`) | Cucumber (`cucumber-java` + `cucumber-junit-platform-engine`) | No |
-| Smoke | El contexto de Spring Boot arranca correctamente con Flyway + JPA | `@SpringBootTest` | Sí (contra H2) |
+| Smoke | El contexto de Spring Boot arranca correctamente con Spring Data MongoDB | `@SpringBootTest` | Sí (contra Testcontainers) |
 
 Los tests de `service/impl` **mockean solo los puertos** (`XxxUseCase`, `XxxRepositoryPort`, `PaymentGatewayPort`) — nunca instancian un adaptador real ni levantan contexto de Spring. Los pasos de Cucumber siguen el mismo principio: `new XxxService(mock(Port.class))` directo, sin `cucumber-spring`.
 
 ## Base de datos en pruebas
 
-Ninguna prueba requiere PostgreSQL corriendo. `src/test/resources/application.yml` configura H2 en memoria en modo compatibilidad PostgreSQL (`MODE=PostgreSQL`), y Flyway aplica la misma migración (`V1__init.sql`) que en producción — así se valida que el esquema real es compatible sin pagar el costo de un contenedor en cada corrida.
+Solo el smoke test (`PaymentApplicationTests`) toca la base de datos. Usa Testcontainers para levantar un contenedor MongoDB real (`mongo:7.0`) vía `MongoTestcontainersConfiguration` (`@Bean @ServiceConnection MongoDBContainer`) — no hay configuración estática de `spring.data.mongodb.*` en `src/test/resources/application.yml`, la URI se inyecta dinámicamente. El resto de las pruebas (unitarias y BDD) no tocan Mongo en absoluto: mockean los puertos de salida directamente.
 
 ## Ejecución
 
@@ -86,7 +86,7 @@ Ninguna prueba requiere PostgreSQL corriendo. `src/test/resources/application.ym
 
 | Clase | Descripción |
 |-------|-------------|
-| `PaymentApplicationTests` | Verifica que el contexto de Spring Boot carga correctamente (JPA + Flyway contra H2) |
+| `PaymentApplicationTests` | Verifica que el contexto de Spring Boot carga correctamente (Spring Data MongoDB contra un contenedor Testcontainers) |
 
 ## Buenas prácticas de este proyecto
 
