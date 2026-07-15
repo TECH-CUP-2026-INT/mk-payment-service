@@ -5,6 +5,7 @@ import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PaymentOrderRestMapperTest {
 
+    private final PaymentOrderRestMapper mapper = Mappers.getMapper(PaymentOrderRestMapper.class);
+
     @Test
     @DisplayName("EXPIRED se mapea a REJECTED en la respuesta pública, el dominio conserva EXPIRED")
     void mapsExpiredToRejected() {
@@ -21,7 +24,7 @@ class PaymentOrderRestMapperTest {
                 new BigDecimal("50000"), PaymentOrderStatus.EXPIRED, null, UUID.randomUUID().toString(),
                 null, null, LocalDateTime.now().minusMinutes(1), 0L);
 
-        PaymentOrderStatusResponse response = PaymentOrderRestMapper.toStatusResponse(expiredOrder);
+        PaymentOrderStatusResponse response = mapper.toStatusResponse(expiredOrder);
 
         assertThat(response.status()).isEqualTo("REJECTED");
         assertThat(expiredOrder.getStatus()).isEqualTo(PaymentOrderStatus.EXPIRED);
@@ -34,6 +37,6 @@ class PaymentOrderRestMapperTest {
                 new BigDecimal("50000"), PaymentOrderStatus.APPROVED, "mp-1", UUID.randomUUID().toString(),
                 null, null, LocalDateTime.now().plusMinutes(1), 0L);
 
-        assertThat(PaymentOrderRestMapper.toStatusResponse(approvedOrder).status()).isEqualTo("APPROVED");
+        assertThat(mapper.toStatusResponse(approvedOrder).status()).isEqualTo("APPROVED");
     }
 }

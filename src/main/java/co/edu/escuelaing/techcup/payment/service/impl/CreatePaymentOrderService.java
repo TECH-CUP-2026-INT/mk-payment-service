@@ -2,6 +2,7 @@ package co.edu.escuelaing.techcup.payment.service.impl;
 
 import co.edu.escuelaing.techcup.payment.exception.AmountOutOfRangeException;
 import co.edu.escuelaing.techcup.payment.exception.DuplicateEnrollmentOrderException;
+import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
@@ -14,8 +15,6 @@ import java.math.BigDecimal;
 @Service
 public class CreatePaymentOrderService implements CreatePaymentOrderUseCase {
 
-    private static final String PSE_PAYMENT_METHOD_ID = "pse";
-
     private final PaymentOrderRepositoryPort paymentOrderRepository;
     private final PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository;
 
@@ -27,7 +26,7 @@ public class CreatePaymentOrderService implements CreatePaymentOrderUseCase {
 
     @Override
     public PaymentOrder create(String enrollmentId, String teamId, String tournamentId, BigDecimal amount) {
-        PaymentMethodLimits limits = paymentMethodLimitsRepository.findById(PSE_PAYMENT_METHOD_ID)
+        PaymentMethodLimits limits = paymentMethodLimitsRepository.findById(PaymentMethodId.PSE)
                 .orElseThrow(() -> new AmountOutOfRangeException(
                         "No hay límites de monto cacheados para PSE, no se puede validar el monto"));
         if (!limits.isWithinRange(amount)) {

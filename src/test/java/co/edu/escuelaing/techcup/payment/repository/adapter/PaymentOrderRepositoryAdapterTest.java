@@ -8,6 +8,7 @@ import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,13 +25,15 @@ import static org.mockito.Mockito.when;
 
 class PaymentOrderRepositoryAdapterTest {
 
+    private final PaymentOrderPersistenceMapper mapper = Mappers.getMapper(PaymentOrderPersistenceMapper.class);
+
     private PaymentOrderJpaRepository jpaRepository;
     private PaymentOrderRepositoryAdapter adapter;
 
     @BeforeEach
     void setUp() {
         jpaRepository = mock(PaymentOrderJpaRepository.class);
-        adapter = new PaymentOrderRepositoryAdapter(jpaRepository);
+        adapter = new PaymentOrderRepositoryAdapter(jpaRepository, mapper);
     }
 
     private static PaymentOrder anOrder() {
@@ -43,7 +46,7 @@ class PaymentOrderRepositoryAdapterTest {
     @DisplayName("save delega en el repositorio JPA y devuelve el dominio reconstruido")
     void savesOrder() {
         PaymentOrder order = anOrder();
-        PaymentOrderEntity persistedEntity = PaymentOrderPersistenceMapper.toEntity(order);
+        PaymentOrderEntity persistedEntity = mapper.toEntity(order);
         when(jpaRepository.save(any(PaymentOrderEntity.class))).thenReturn(persistedEntity);
 
         PaymentOrder saved = adapter.save(order);
@@ -65,7 +68,7 @@ class PaymentOrderRepositoryAdapterTest {
     void findsByEnrollmentId() {
         PaymentOrder order = anOrder();
         when(jpaRepository.findByEnrollmentId("enr-1"))
-                .thenReturn(Optional.of(PaymentOrderPersistenceMapper.toEntity(order)));
+                .thenReturn(Optional.of(mapper.toEntity(order)));
 
         Optional<PaymentOrder> result = adapter.findByEnrollmentId("enr-1");
 
@@ -86,7 +89,7 @@ class PaymentOrderRepositoryAdapterTest {
     void findsByMpPaymentId() {
         PaymentOrder order = anOrder();
         when(jpaRepository.findByMpPaymentId("mp-1"))
-                .thenReturn(Optional.of(PaymentOrderPersistenceMapper.toEntity(order)));
+                .thenReturn(Optional.of(mapper.toEntity(order)));
 
         Optional<PaymentOrder> result = adapter.findByMpPaymentId("mp-1");
 
@@ -97,7 +100,7 @@ class PaymentOrderRepositoryAdapterTest {
     @DisplayName("findByStatusInAndExpiresAtBefore traduce los enums a nombres y mapea la lista resultante")
     void findsByStatusInAndExpiresAtBefore() {
         LocalDateTime before = LocalDateTime.now();
-        PaymentOrderEntity entity = PaymentOrderPersistenceMapper.toEntity(anOrder());
+        PaymentOrderEntity entity = mapper.toEntity(anOrder());
         when(jpaRepository.findByStatusInAndExpiresAtBefore(
                 List.of("PENDING", "AWAITING_BANK_CONFIRMATION"), before))
                 .thenReturn(List.of(entity));

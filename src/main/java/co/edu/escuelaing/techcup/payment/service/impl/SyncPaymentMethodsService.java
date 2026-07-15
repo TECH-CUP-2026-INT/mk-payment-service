@@ -1,5 +1,6 @@
 package co.edu.escuelaing.techcup.payment.service.impl;
 
+import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
@@ -16,7 +17,6 @@ import java.util.List;
 public class SyncPaymentMethodsService implements SyncPaymentMethodsUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(SyncPaymentMethodsService.class);
-    private static final String PSE_PAYMENT_METHOD_ID = "pse";
 
     private final PaymentGatewayPort paymentGateway;
     private final PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository;
@@ -31,7 +31,7 @@ public class SyncPaymentMethodsService implements SyncPaymentMethodsUseCase {
     public void sync() {
         List<PaymentMethodInfo> methods = paymentGateway.getAvailablePaymentMethods();
         methods.stream()
-                .filter(method -> PSE_PAYMENT_METHOD_ID.equals(method.id()))
+                .filter(method -> PaymentMethodId.PSE.equals(method.id()))
                 .findFirst()
                 .ifPresentOrElse(this::upsertLimits,
                         () -> log.warn("Mercado Pago no devolvió información del método de pago 'pse' en la sincronización"));

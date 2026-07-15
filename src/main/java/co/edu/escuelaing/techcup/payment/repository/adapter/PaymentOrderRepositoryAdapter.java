@@ -16,15 +16,18 @@ import java.util.Optional;
 public class PaymentOrderRepositoryAdapter implements PaymentOrderRepositoryPort {
 
     private final PaymentOrderJpaRepository jpaRepository;
+    private final PaymentOrderPersistenceMapper mapper;
 
-    public PaymentOrderRepositoryAdapter(PaymentOrderJpaRepository jpaRepository) {
+    public PaymentOrderRepositoryAdapter(PaymentOrderJpaRepository jpaRepository,
+            PaymentOrderPersistenceMapper mapper) {
         this.jpaRepository = jpaRepository;
+        this.mapper = mapper;
     }
 
     @Override
     public PaymentOrder save(PaymentOrder paymentOrder) {
-        PaymentOrderEntity saved = jpaRepository.save(PaymentOrderPersistenceMapper.toEntity(paymentOrder));
-        return PaymentOrderPersistenceMapper.toDomain(saved);
+        PaymentOrderEntity saved = jpaRepository.save(mapper.toEntity(paymentOrder));
+        return mapper.toDomain(saved);
     }
 
     @Override
@@ -34,19 +37,19 @@ public class PaymentOrderRepositoryAdapter implements PaymentOrderRepositoryPort
 
     @Override
     public Optional<PaymentOrder> findByEnrollmentId(String enrollmentId) {
-        return jpaRepository.findByEnrollmentId(enrollmentId).map(PaymentOrderPersistenceMapper::toDomain);
+        return jpaRepository.findByEnrollmentId(enrollmentId).map(mapper::toDomain);
     }
 
     @Override
     public Optional<PaymentOrder> findByMpPaymentId(String mpPaymentId) {
-        return jpaRepository.findByMpPaymentId(mpPaymentId).map(PaymentOrderPersistenceMapper::toDomain);
+        return jpaRepository.findByMpPaymentId(mpPaymentId).map(mapper::toDomain);
     }
 
     @Override
     public List<PaymentOrder> findByStatusInAndExpiresAtBefore(List<PaymentOrderStatus> statuses, LocalDateTime before) {
         List<String> statusNames = statuses.stream().map(Enum::name).toList();
         return jpaRepository.findByStatusInAndExpiresAtBefore(statusNames, before).stream()
-                .map(PaymentOrderPersistenceMapper::toDomain)
+                .map(mapper::toDomain)
                 .toList();
     }
 }

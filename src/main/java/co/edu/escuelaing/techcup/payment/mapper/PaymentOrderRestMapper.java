@@ -1,34 +1,45 @@
 package co.edu.escuelaing.techcup.payment.mapper;
 
+import co.edu.escuelaing.techcup.payment.dto.request.SubmitPseTransactionRequest;
 import co.edu.escuelaing.techcup.payment.dto.response.CreatePaymentOrderResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.PaymentOrderStatusResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.SubmitPseTransactionResponse;
+import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
-public final class PaymentOrderRestMapper {
+@Mapper(componentModel = "spring")
+public interface PaymentOrderRestMapper {
 
-    private PaymentOrderRestMapper() {
-    }
+    @Mapping(source = "id", target = "paymentOrderId")
+    @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
+    CreatePaymentOrderResponse toCreateResponse(PaymentOrder paymentOrder);
 
-    public static CreatePaymentOrderResponse toCreateResponse(PaymentOrder paymentOrder) {
-        return new CreatePaymentOrderResponse(
-                paymentOrder.getId(), paymentOrder.getStatus().name(), paymentOrder.getExpiresAt());
-    }
-
-    public static SubmitPseTransactionResponse toSubmitPseResponse(PaymentOrder paymentOrder) {
-        return new SubmitPseTransactionResponse(paymentOrder.getStatus().name(), paymentOrder.getExternalResourceUrl());
-    }
+    @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
+    SubmitPseTransactionResponse toSubmitPseResponse(PaymentOrder paymentOrder);
 
     /**
-     * EXPIRED is an internal-only status: the public contract only knows
-     * PENDING/AWAITING_BANK_CONFIRMATION/APPROVED/REJECTED, so it's mapped to
-     * REJECTED here. The domain and database keep EXPIRED for auditing.
+     * EXPIRED es interno: se expone como REJECTED al cliente.
      */
-    public static PaymentOrderStatusResponse toStatusResponse(PaymentOrder paymentOrder) {
-        PaymentOrderStatus status = paymentOrder.getStatus() == PaymentOrderStatus.EXPIRED
-                ? PaymentOrderStatus.REJECTED
-                : paymentOrder.getStatus();
-        return new PaymentOrderStatusResponse(status.name());
+    @Mapping(source = "status", target = "status", qualifiedByName = "statusToPublicString")
+    PaymentOrderStatusResponse toStatusResponse(PaymentOrder paymentOrder);
+
+    @Mapping(source = "payerEmail", target = "email")
+    @Mapping(source = "identificationType", target = "identificationType")
+    @Mapping(source = "identificationNumber", target = "identificationNumber")
+    @Mapping(source = "entityType", target = "entityType")
+    Payer toPayer(SubmitPseTransactionRequest request);
+
+    @Named("statusToString")
+    default String statusToString(PaymentOrderStatus status) {
+        return status.name();
+    }
+
+    @Named("statusToPublicString")
+    default String statusToPublicString(PaymentOrderStatus status) {
+        return (status == PaymentOrderStatus.EXPIRED ? PaymentOrderStatus.REJECTED : status).name();
     }
 }
