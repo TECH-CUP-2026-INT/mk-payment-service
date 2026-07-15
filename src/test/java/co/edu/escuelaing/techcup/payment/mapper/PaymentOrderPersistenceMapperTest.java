@@ -6,6 +6,7 @@ import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +15,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PaymentOrderPersistenceMapperTest {
+
+    private final PaymentOrderPersistenceMapper mapper = Mappers.getMapper(PaymentOrderPersistenceMapper.class);
 
     @Test
     @DisplayName("toEntity copia todos los campos del dominio, incluyendo el pagador aplanado")
@@ -24,7 +27,7 @@ class PaymentOrderPersistenceMapperTest {
                 new BigDecimal("50000"), PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, "mp-1",
                 "idem-1", "https://mp.test/ticket", payer, LocalDateTime.now().plusMinutes(30), 3L);
 
-        PaymentOrderEntity entity = PaymentOrderPersistenceMapper.toEntity(order);
+        PaymentOrderEntity entity = mapper.toEntity(order);
 
         assertThat(entity.getPaymentOrderId()).isEqualTo(id);
         assertThat(entity.getEnrollmentId()).isEqualTo("enr-1");
@@ -49,7 +52,7 @@ class PaymentOrderPersistenceMapperTest {
                 new BigDecimal("30000"), PaymentOrderStatus.PENDING, null, "idem-2", null, null,
                 LocalDateTime.now().plusMinutes(60), null);
 
-        PaymentOrderEntity entity = PaymentOrderPersistenceMapper.toEntity(order);
+        PaymentOrderEntity entity = mapper.toEntity(order);
 
         assertThat(entity.getPayerEmail()).isNull();
         assertThat(entity.getPayerIdType()).isNull();
@@ -80,7 +83,7 @@ class PaymentOrderPersistenceMapperTest {
         entity.setExpiresAt(expiresAt);
         entity.setVersion(5);
 
-        PaymentOrder order = PaymentOrderPersistenceMapper.toDomain(entity);
+        PaymentOrder order = mapper.toDomain(entity);
 
         assertThat(order.getId()).isEqualTo(id);
         assertThat(order.getStatus()).isEqualTo(PaymentOrderStatus.APPROVED);
@@ -102,7 +105,7 @@ class PaymentOrderPersistenceMapperTest {
         entity.setIdempotencyKey("idem-2");
         entity.setExpiresAt(LocalDateTime.now().plusMinutes(60));
 
-        PaymentOrder order = PaymentOrderPersistenceMapper.toDomain(entity);
+        PaymentOrder order = mapper.toDomain(entity);
 
         assertThat(order.getPayer()).isNull();
         assertThat(order.getVersion()).isNull();
