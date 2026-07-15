@@ -3,6 +3,7 @@ package co.edu.escuelaing.techcup.payment.controller.impl;
 import co.edu.escuelaing.techcup.payment.dto.request.CreatePaymentOrderRequest;
 import co.edu.escuelaing.techcup.payment.dto.request.PaymentWebhookRequest;
 import co.edu.escuelaing.techcup.payment.dto.request.SubmitPseTransactionRequest;
+import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderRestMapper;
 import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -48,9 +50,10 @@ class PaymentOrderControllerTest {
         submitPseTransactionUseCase = mock(SubmitPseTransactionUseCase.class);
         processPaymentWebhookUseCase = mock(ProcessPaymentWebhookUseCase.class);
         getPaymentOrderStatusUseCase = mock(GetPaymentOrderStatusUseCase.class);
+        PaymentOrderRestMapper mapper = Mappers.getMapper(PaymentOrderRestMapper.class);
         PaymentOrderController controller = new PaymentOrderController(
                 createPaymentOrderUseCase, submitPseTransactionUseCase,
-                processPaymentWebhookUseCase, getPaymentOrderStatusUseCase);
+                processPaymentWebhookUseCase, getPaymentOrderStatusUseCase, mapper);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

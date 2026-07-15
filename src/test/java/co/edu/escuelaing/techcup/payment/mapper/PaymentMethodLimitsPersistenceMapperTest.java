@@ -4,6 +4,7 @@ import co.edu.escuelaing.techcup.payment.entity.PaymentMethodLimitsEntity;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PaymentMethodLimitsPersistenceMapperTest {
 
+    private final PaymentMethodLimitsPersistenceMapper mapper =
+            Mappers.getMapper(PaymentMethodLimitsPersistenceMapper.class);
+
     @Test
     @DisplayName("toEntity copia todos los campos del dominio")
     void mapsDomainToEntity() {
@@ -19,7 +23,7 @@ class PaymentMethodLimitsPersistenceMapperTest {
         PaymentMethodLimits domain = new PaymentMethodLimits("pse", new BigDecimal("10000"),
                 new BigDecimal("500000"), "active", syncedAt);
 
-        PaymentMethodLimitsEntity entity = PaymentMethodLimitsPersistenceMapper.toEntity(domain);
+        PaymentMethodLimitsEntity entity = mapper.toEntity(domain);
 
         assertThat(entity.getPaymentMethodId()).isEqualTo("pse");
         assertThat(entity.getMinAllowedAmount()).isEqualByComparingTo("10000");
@@ -39,7 +43,7 @@ class PaymentMethodLimitsPersistenceMapperTest {
         entity.setStatus("active");
         entity.setLastSyncedAt(syncedAt);
 
-        PaymentMethodLimits domain = PaymentMethodLimitsPersistenceMapper.toDomain(entity);
+        PaymentMethodLimits domain = mapper.toDomain(entity);
 
         assertThat(domain).isEqualTo(new PaymentMethodLimits("pse", new BigDecimal("10000"),
                 new BigDecimal("500000"), "active", syncedAt));

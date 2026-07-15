@@ -1,10 +1,12 @@
 package co.edu.escuelaing.techcup.payment.controller.impl;
 
+import co.edu.escuelaing.techcup.payment.mapper.PaymentMethodLimitsRestMapper;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentMethodLimitsUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -25,7 +27,8 @@ class PaymentMethodControllerTest {
     @BeforeEach
     void setUp() {
         getPaymentMethodLimitsUseCase = mock(GetPaymentMethodLimitsUseCase.class);
-        PaymentMethodController controller = new PaymentMethodController(getPaymentMethodLimitsUseCase);
+        PaymentMethodLimitsRestMapper mapper = Mappers.getMapper(PaymentMethodLimitsRestMapper.class);
+        PaymentMethodController controller = new PaymentMethodController(getPaymentMethodLimitsUseCase, mapper);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
