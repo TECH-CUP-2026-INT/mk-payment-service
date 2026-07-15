@@ -7,8 +7,8 @@ import java.util.List;
 
 public interface PaymentGatewayPort {
 
-    PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount, String financialInstitution,
-            Payer payer, String notificationUrl);
+    PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
+            String financialInstitution, Payer payer, String notificationUrl);
 
     PaymentStatusResult getPaymentStatus(String mpPaymentId);
 

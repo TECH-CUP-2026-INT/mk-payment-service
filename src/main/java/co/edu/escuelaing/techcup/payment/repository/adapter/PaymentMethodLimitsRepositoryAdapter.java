@@ -13,19 +13,22 @@ import java.util.Optional;
 public class PaymentMethodLimitsRepositoryAdapter implements PaymentMethodLimitsRepositoryPort {
 
     private final PaymentMethodLimitsJpaRepository jpaRepository;
+    private final PaymentMethodLimitsPersistenceMapper mapper;
 
-    public PaymentMethodLimitsRepositoryAdapter(PaymentMethodLimitsJpaRepository jpaRepository) {
+    public PaymentMethodLimitsRepositoryAdapter(PaymentMethodLimitsJpaRepository jpaRepository,
+            PaymentMethodLimitsPersistenceMapper mapper) {
         this.jpaRepository = jpaRepository;
+        this.mapper = mapper;
     }
 
     @Override
     public Optional<PaymentMethodLimits> findById(String paymentMethodId) {
-        return jpaRepository.findById(paymentMethodId).map(PaymentMethodLimitsPersistenceMapper::toDomain);
+        return jpaRepository.findById(paymentMethodId).map(mapper::toDomain);
     }
 
     @Override
     public PaymentMethodLimits save(PaymentMethodLimits limits) {
-        PaymentMethodLimitsEntity saved = jpaRepository.save(PaymentMethodLimitsPersistenceMapper.toEntity(limits));
-        return PaymentMethodLimitsPersistenceMapper.toDomain(saved);
+        PaymentMethodLimitsEntity saved = jpaRepository.save(mapper.toEntity(limits));
+        return mapper.toDomain(saved);
     }
 }

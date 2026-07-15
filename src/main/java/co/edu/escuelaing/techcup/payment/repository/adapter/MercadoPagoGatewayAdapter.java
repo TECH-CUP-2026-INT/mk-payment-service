@@ -1,6 +1,7 @@
 package co.edu.escuelaing.techcup.payment.repository.adapter;
 
 import co.edu.escuelaing.techcup.payment.exception.PaymentGatewayException;
+import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
@@ -18,7 +19,7 @@ import java.util.List;
 @Component
 public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
-    private static final String PSE_PAYMENT_METHOD_ID = "pse";
+    private static final String PSE_PAYMENT_METHOD_ID = PaymentMethodId.PSE;
 
     private final RestClient restClient;
     private final String accessToken;
@@ -60,9 +61,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                 throw new IllegalStateException("Respuesta vacía de Mercado Pago");
             }
             return new PseTransactionResult(String.valueOf(response.id()), response.status(),
-                    response.pointOfInteraction() != null && response.pointOfInteraction().transactionData() != null
-                            ? response.pointOfInteraction().transactionData().ticketUrl()
-                            : null);
+                    response.transactionDetails() != null ? response.transactionDetails().externalResourceUrl() : null);
         } catch (Exception ex) {
             throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
         }
@@ -126,14 +125,11 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     private record PaymentApiResponse(
             Long id,
             String status,
-            @JsonProperty("point_of_interaction") PointOfInteractionApiResponse pointOfInteraction) {
+            @JsonProperty("transaction_details") TransactionDetailsApiResponse transactionDetails) {
     }
 
-    private record PointOfInteractionApiResponse(
-            @JsonProperty("transaction_data") TransactionDataApiResponse transactionData) {
-    }
-
-    private record TransactionDataApiResponse(@JsonProperty("ticket_url") String ticketUrl) {
+    private record TransactionDetailsApiResponse(
+            @JsonProperty("external_resource_url") String externalResourceUrl) {
     }
 
     private record PaymentMethodApiResponse(

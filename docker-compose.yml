@@ -8,6 +8,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/techcup_payments
       SPRING_DATASOURCE_USERNAME: techcup
       SPRING_DATASOURCE_PASSWORD: techcup
+      MP_ACCESS_TOKEN_DEV: ${MP_ACCESS_TOKEN_DEV}
+      MP_PUBLIC_KEY_DEV: ${MP_PUBLIC_KEY_DEV}
+      MP_NOTIFICATION_URL_DEV: ${MP_NOTIFICATION_URL_DEV:-https://REPLACE-WITH-YOUR-NGROK-URL.ngrok-free.app/payment-orders/webhook}
     depends_on:
       - postgres
     restart: on-failure
