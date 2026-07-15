@@ -77,7 +77,7 @@ public class SubmitPseTransactionSteps {
     @When("se envía la transacción PSE para el enrollmentId {string} con institución financiera {string} y pagador {string}")
     public void seEnviaLaTransaccionPse(String enrollmentId, String financialInstitution, String payerEmail) {
         try {
-            Payer payer = new Payer(payerEmail, "CC", "123456789");
+            Payer payer = new Payer(payerEmail, "CC", "123456789", "individual");
             result = service.submit(enrollmentId, payer, financialInstitution);
         } catch (Exception ex) {
             thrownException = ex;

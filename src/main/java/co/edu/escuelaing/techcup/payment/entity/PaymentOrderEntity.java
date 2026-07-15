@@ -56,6 +56,8 @@ public class PaymentOrderEntity {
 
     private String payerIdNumber;
 
+    private String payerEntityType;
+
     private LocalDateTime expiresAt;
 
     private LocalDateTime createdAt;

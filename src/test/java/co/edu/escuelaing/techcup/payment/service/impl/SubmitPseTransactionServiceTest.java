@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 class SubmitPseTransactionServiceTest {
 
-    private static final Payer PAYER = new Payer("pagador@correo.com", "CC", "123456789");
+    private static final Payer PAYER = new Payer("pagador@correo.com", "CC", "123456789", "individual");
     private static final String NOTIFICATION_URL = "https://example-test-tunnel.invalid/payment-orders/webhook";
 
     private PaymentOrderRepositoryPort paymentOrderRepository;

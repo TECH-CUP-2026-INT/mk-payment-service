@@ -56,7 +56,8 @@ public class PaymentOrderController {
     @PostMapping("/{enrollmentId}/pse")
     public ResponseEntity<SubmitPseTransactionResponse> submitPse(@PathVariable String enrollmentId,
             @Valid @RequestBody SubmitPseTransactionRequest request) {
-        Payer payer = new Payer(request.payerEmail(), request.identificationType(), request.identificationNumber());
+        Payer payer = new Payer(request.payerEmail(), request.identificationType(), request.identificationNumber(),
+                request.entityType());
         PaymentOrder paymentOrder = submitPseTransactionUseCase.submit(enrollmentId, payer, request.financialInstitution());
         return ResponseEntity.ok(PaymentOrderRestMapper.toSubmitPseResponse(paymentOrder));
     }
