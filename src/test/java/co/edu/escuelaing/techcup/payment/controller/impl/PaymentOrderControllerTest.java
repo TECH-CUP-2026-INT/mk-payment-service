@@ -89,6 +89,34 @@ class PaymentOrderControllerTest {
     }
 
     @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType fuera del catálogo permitido")
+    void rejectsInvalidEntityType() throws Exception {
+        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
+                "1007", "payer@test.com", "CC", "123456", "company");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType en blanco")
+    void rejectsBlankEntityType() throws Exception {
+        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
+                "1007", "payer@test.com", "CC", "123456", " ");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("POST /payment-orders/webhook procesa la notificación cuando trae data.id")
     void processesWebhookWithId() throws Exception {
         PaymentWebhookRequest request = new PaymentWebhookRequest("payment.updated", "payment",
