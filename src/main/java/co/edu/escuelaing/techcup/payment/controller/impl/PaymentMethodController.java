@@ -17,14 +17,17 @@ import java.math.BigDecimal;
 public class PaymentMethodController {
 
     private final GetPaymentMethodLimitsUseCase getPaymentMethodLimitsUseCase;
+    private final PaymentMethodLimitsRestMapper mapper;
 
-    public PaymentMethodController(GetPaymentMethodLimitsUseCase getPaymentMethodLimitsUseCase) {
+    public PaymentMethodController(GetPaymentMethodLimitsUseCase getPaymentMethodLimitsUseCase,
+            PaymentMethodLimitsRestMapper mapper) {
         this.getPaymentMethodLimitsUseCase = getPaymentMethodLimitsUseCase;
+        this.mapper = mapper;
     }
 
     @GetMapping("/limits")
     public ResponseEntity<PaymentMethodLimitsResponse> getLimits(@RequestParam BigDecimal amount) {
         PaymentMethodLimits limits = getPaymentMethodLimitsUseCase.getPseLimits();
-        return ResponseEntity.ok(PaymentMethodLimitsRestMapper.toLimitsResponse(limits, amount));
+        return ResponseEntity.ok(mapper.toLimitsResponse(limits, amount));
     }
 }

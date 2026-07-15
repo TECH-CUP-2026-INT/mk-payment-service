@@ -34,3 +34,6 @@ build/
 
 ### MkDocs ###
 site/
+
+### Environment secrets ###
+.env
