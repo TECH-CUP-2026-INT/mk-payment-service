@@ -26,6 +26,7 @@ public final class PaymentOrderPersistenceMapper {
         entity.setPayerEmail(payer != null ? payer.email() : null);
         entity.setPayerIdType(payer != null ? payer.identificationType() : null);
         entity.setPayerIdNumber(payer != null ? payer.identificationNumber() : null);
+        entity.setPayerEntityType(payer != null ? payer.entityType() : null);
 
         entity.setExpiresAt(domain.getExpiresAt());
         entity.setVersion(domain.getVersion() != null ? domain.getVersion().intValue() : null);
@@ -34,7 +35,8 @@ public final class PaymentOrderPersistenceMapper {
 
     public static PaymentOrder toDomain(PaymentOrderEntity entity) {
         Payer payer = entity.getPayerEmail() != null
-                ? new Payer(entity.getPayerEmail(), entity.getPayerIdType(), entity.getPayerIdNumber())
+                ? new Payer(entity.getPayerEmail(), entity.getPayerIdType(), entity.getPayerIdNumber(),
+                        entity.getPayerEntityType())
                 : null;
 
         return PaymentOrder.reconstruct(

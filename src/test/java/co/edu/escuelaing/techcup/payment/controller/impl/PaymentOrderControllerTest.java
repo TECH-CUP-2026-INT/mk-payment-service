@@ -80,12 +80,40 @@ class PaymentOrderControllerTest {
         when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007")))
                 .thenReturn(anOrder());
         SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
-                "1007", "payer@test.com", "CC", "123456");
+                "1007", "payer@test.com", "CC", "123456", "individual");
 
         mockMvc.perform(post("/payment-orders/enr-1/pse")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType fuera del catálogo permitido")
+    void rejectsInvalidEntityType() throws Exception {
+        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
+                "1007", "payer@test.com", "CC", "123456", "company");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType en blanco")
+    void rejectsBlankEntityType() throws Exception {
+        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
+                "1007", "payer@test.com", "CC", "123456", " ");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
     }
 
     @Test

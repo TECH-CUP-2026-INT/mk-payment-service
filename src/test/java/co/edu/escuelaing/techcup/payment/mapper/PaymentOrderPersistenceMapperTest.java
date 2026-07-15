@@ -19,7 +19,7 @@ class PaymentOrderPersistenceMapperTest {
     @DisplayName("toEntity copia todos los campos del dominio, incluyendo el pagador aplanado")
     void mapsDomainToEntityWithPayer() {
         UUID id = UUID.randomUUID();
-        Payer payer = new Payer("payer@test.com", "CC", "123456");
+        Payer payer = new Payer("payer@test.com", "CC", "123456", "individual");
         PaymentOrder order = PaymentOrder.reconstruct(id, "enr-1", "team-1", "tournament-1",
                 new BigDecimal("50000"), PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, "mp-1",
                 "idem-1", "https://mp.test/ticket", payer, LocalDateTime.now().plusMinutes(30), 3L);
@@ -38,6 +38,7 @@ class PaymentOrderPersistenceMapperTest {
         assertThat(entity.getPayerEmail()).isEqualTo("payer@test.com");
         assertThat(entity.getPayerIdType()).isEqualTo("CC");
         assertThat(entity.getPayerIdNumber()).isEqualTo("123456");
+        assertThat(entity.getPayerEntityType()).isEqualTo("individual");
         assertThat(entity.getVersion()).isEqualTo(3);
     }
 
@@ -53,6 +54,7 @@ class PaymentOrderPersistenceMapperTest {
         assertThat(entity.getPayerEmail()).isNull();
         assertThat(entity.getPayerIdType()).isNull();
         assertThat(entity.getPayerIdNumber()).isNull();
+        assertThat(entity.getPayerEntityType()).isNull();
         assertThat(entity.getVersion()).isNull();
     }
 
@@ -74,6 +76,7 @@ class PaymentOrderPersistenceMapperTest {
         entity.setPayerEmail("payer@test.com");
         entity.setPayerIdType("CC");
         entity.setPayerIdNumber("123456");
+        entity.setPayerEntityType("individual");
         entity.setExpiresAt(expiresAt);
         entity.setVersion(5);
 
@@ -81,7 +84,7 @@ class PaymentOrderPersistenceMapperTest {
 
         assertThat(order.getId()).isEqualTo(id);
         assertThat(order.getStatus()).isEqualTo(PaymentOrderStatus.APPROVED);
-        assertThat(order.getPayer()).isEqualTo(new Payer("payer@test.com", "CC", "123456"));
+        assertThat(order.getPayer()).isEqualTo(new Payer("payer@test.com", "CC", "123456", "individual"));
         assertThat(order.getExpiresAt()).isEqualTo(expiresAt);
         assertThat(order.getVersion()).isEqualTo(5L);
     }

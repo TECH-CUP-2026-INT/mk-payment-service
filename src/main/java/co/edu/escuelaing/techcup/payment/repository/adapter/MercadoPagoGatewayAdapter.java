@@ -49,7 +49,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                     .body(new CreatePaymentApiRequest(
                             PSE_PAYMENT_METHOD_ID,
                             amount,
-                            new PayerApiRequest(payer.email(),
+                            new PayerApiRequest(payer.email(), payer.entityType(),
                                     new IdentificationApiRequest(payer.identificationType(), payer.identificationNumber())),
                             new TransactionDetailsApiRequest(financialInstitution),
                             notificationUrl,
@@ -113,7 +113,8 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("notification_url") String notificationUrl) {
     }
 
-    private record PayerApiRequest(String email, IdentificationApiRequest identification) {
+    private record PayerApiRequest(String email, @JsonProperty("entity_type") String entityType,
+            IdentificationApiRequest identification) {
     }
 
     private record IdentificationApiRequest(String type, String number) {
