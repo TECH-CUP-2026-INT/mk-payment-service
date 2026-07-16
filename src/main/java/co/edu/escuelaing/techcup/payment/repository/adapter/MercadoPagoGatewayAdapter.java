@@ -8,11 +8,14 @@ import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.List;
 @Component
 public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
+    private static final Logger log = LoggerFactory.getLogger(MercadoPagoGatewayAdapter.class);
     private static final String PSE_PAYMENT_METHOD_ID = PaymentMethodId.PSE;
 
     private final RestClient restClient;
@@ -80,7 +84,12 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             }
             return new PseTransactionResult(String.valueOf(response.id()), response.status(),
                     response.transactionDetails() != null ? response.transactionDetails().externalResourceUrl() : null);
+        } catch (RestClientResponseException ex) {
+            log.error("Mercado Pago respondió {} al crear la transacción PSE: {}",
+                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+            throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
         } catch (Exception ex) {
+            log.error("Error inesperado al crear la transacción PSE en Mercado Pago", ex);
             throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
         }
     }
@@ -97,7 +106,12 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                 throw new IllegalStateException("Respuesta vacía de Mercado Pago");
             }
             return new PaymentStatusResult(String.valueOf(response.id()), response.status());
+        } catch (RestClientResponseException ex) {
+            log.error("Mercado Pago respondió {} al consultar el pago {}: {}",
+                    ex.getStatusCode(), mpPaymentId, ex.getResponseBodyAsString(), ex);
+            throw new PaymentGatewayException("No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
         } catch (Exception ex) {
+            log.error("Error inesperado al consultar el estado del pago {} en Mercado Pago", mpPaymentId, ex);
             throw new PaymentGatewayException("No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
         }
     }
@@ -116,7 +130,12 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             return List.of(response).stream()
                     .map(pm -> new PaymentMethodInfo(pm.id(), pm.status(), pm.minAllowedAmount(), pm.maxAllowedAmount()))
                     .toList();
+        } catch (RestClientResponseException ex) {
+            log.error("Mercado Pago respondió {} al consultar los medios de pago: {}",
+                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+            throw new PaymentGatewayException("No se pudieron consultar los medios de pago de Mercado Pago", ex);
         } catch (Exception ex) {
+            log.error("Error inesperado al consultar los medios de pago de Mercado Pago", ex);
             throw new PaymentGatewayException("No se pudieron consultar los medios de pago de Mercado Pago", ex);
         }
     }
