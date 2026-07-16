@@ -10,6 +10,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -27,7 +28,7 @@ public class ExpireTransactionService implements ExpireTransactionUseCase {
     public void expireDueOrders() {
         List<PaymentOrder> dueOrders = paymentOrderRepository.findByStatusInAndExpiresAtBefore(
                 List.of(PaymentOrderStatus.PENDING, PaymentOrderStatus.AWAITING_BANK_CONFIRMATION),
-                LocalDateTime.now());
+                LocalDateTime.now(ZoneId.systemDefault()));
 
         for (PaymentOrder paymentOrder : dueOrders) {
             paymentOrder.expire();

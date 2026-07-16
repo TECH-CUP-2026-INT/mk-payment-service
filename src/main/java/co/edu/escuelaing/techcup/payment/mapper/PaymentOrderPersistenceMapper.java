@@ -33,19 +33,20 @@ public interface PaymentOrderPersistenceMapper {
         if (entity == null) {
             return null;
         }
-        return PaymentOrder.reconstruct(
-                entity.getPaymentOrderId(),
-                entity.getEnrollmentId(),
-                entity.getTeamId(),
-                entity.getTournamentId(),
-                entity.getAmount(),
-                stringToStatus(entity.getStatus()),
-                entity.getMpPaymentId(),
-                entity.getIdempotencyKey(),
-                entity.getExternalResourceUrl(),
-                entityToPayer(entity),
-                entity.getExpiresAt(),
-                intToLong(entity.getVersion()));
+        return PaymentOrder.builder()
+                .paymentOrderId(entity.getPaymentOrderId())
+                .enrollmentId(entity.getEnrollmentId())
+                .teamId(entity.getTeamId())
+                .tournamentId(entity.getTournamentId())
+                .amount(entity.getAmount())
+                .status(stringToStatus(entity.getStatus()))
+                .mpPaymentId(entity.getMpPaymentId())
+                .idempotencyKey(entity.getIdempotencyKey())
+                .externalResourceUrl(entity.getExternalResourceUrl())
+                .payer(entityToPayer(entity))
+                .expiresAt(entity.getExpiresAt())
+                .version(intToLong(entity.getVersion()))
+                .build();
     }
 
     @Named("statusToString")

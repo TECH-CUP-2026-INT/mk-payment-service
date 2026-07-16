@@ -58,9 +58,16 @@ class PaymentOrderControllerTest {
     }
 
     private static PaymentOrder anOrder() {
-        return PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.PENDING, null, UUID.randomUUID().toString(),
-                null, null, LocalDateTime.now().plusMinutes(60), null);
+        return PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.PENDING)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().plusMinutes(60))
+                .build();
     }
 
     @Test

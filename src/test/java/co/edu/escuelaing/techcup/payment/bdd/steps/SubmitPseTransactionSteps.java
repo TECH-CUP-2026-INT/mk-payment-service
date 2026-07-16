@@ -113,8 +113,17 @@ public class SubmitPseTransactionSteps {
     }
 
     private void registerOrder(String enrollmentId, PaymentOrderStatus status, LocalDateTime expiresAt) {
-        PaymentOrder order = PaymentOrder.reconstruct(UUID.randomUUID(), enrollmentId, "team-1", "tournament-1",
-                new BigDecimal("50000"), status, null, UUID.randomUUID().toString(), null, null, expiresAt, 0L);
+        PaymentOrder order = PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId(enrollmentId)
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(status)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(expiresAt)
+                .version(0L)
+                .build();
         when(paymentOrderRepository.findByEnrollmentId(enrollmentId)).thenReturn(Optional.of(order));
     }
 }

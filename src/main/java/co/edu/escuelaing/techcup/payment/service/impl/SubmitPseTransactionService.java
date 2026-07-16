@@ -15,6 +15,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 public class SubmitPseTransactionService implements SubmitPseTransactionUseCase {
@@ -65,7 +66,7 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
      */
     private void rejectIfExpired(PaymentOrder paymentOrder) {
         boolean alreadyExpiredInDb = paymentOrder.getStatus() == PaymentOrderStatus.EXPIRED;
-        boolean expiredButNotYetSwept = paymentOrder.isExpired(LocalDateTime.now())
+        boolean expiredButNotYetSwept = paymentOrder.isExpired(LocalDateTime.now(ZoneId.systemDefault()))
                 && (paymentOrder.getStatus() == PaymentOrderStatus.PENDING
                         || paymentOrder.getStatus() == PaymentOrderStatus.AWAITING_BANK_CONFIRMATION);
 

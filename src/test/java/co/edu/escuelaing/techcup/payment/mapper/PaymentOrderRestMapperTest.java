@@ -20,9 +20,17 @@ class PaymentOrderRestMapperTest {
     @Test
     @DisplayName("EXPIRED se mapea a REJECTED en la respuesta pública, el dominio conserva EXPIRED")
     void mapsExpiredToRejected() {
-        PaymentOrder expiredOrder = PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.EXPIRED, null, UUID.randomUUID().toString(),
-                null, null, LocalDateTime.now().minusMinutes(1), 0L);
+        PaymentOrder expiredOrder = PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.EXPIRED)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().minusMinutes(1))
+                .version(0L)
+                .build();
 
         PaymentOrderStatusResponse response = mapper.toStatusResponse(expiredOrder);
 
@@ -33,9 +41,18 @@ class PaymentOrderRestMapperTest {
     @Test
     @DisplayName("los demás estados se serializan tal cual")
     void mapsOtherStatusesAsIs() {
-        PaymentOrder approvedOrder = PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.APPROVED, "mp-1", UUID.randomUUID().toString(),
-                null, null, LocalDateTime.now().plusMinutes(1), 0L);
+        PaymentOrder approvedOrder = PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.APPROVED)
+                .mpPaymentId("mp-1")
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().plusMinutes(1))
+                .version(0L)
+                .build();
 
         assertThat(mapper.toStatusResponse(approvedOrder).status()).isEqualTo("APPROVED");
     }

@@ -32,9 +32,17 @@ class ExpireTransactionServiceTest {
     }
 
     private PaymentOrder dueOrder(PaymentOrderStatus status) {
-        return PaymentOrder.reconstruct(UUID.randomUUID(), "enr-" + UUID.randomUUID(), "team-1", "tournament-1",
-                new BigDecimal("50000"), status, null, UUID.randomUUID().toString(), null, null,
-                LocalDateTime.now().minusMinutes(1), 0L);
+        return PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-" + UUID.randomUUID())
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(status)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().minusMinutes(1))
+                .version(0L)
+                .build();
     }
 
     @Nested

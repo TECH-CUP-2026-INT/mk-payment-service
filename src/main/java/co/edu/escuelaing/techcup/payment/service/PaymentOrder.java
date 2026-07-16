@@ -5,11 +5,14 @@ import co.edu.escuelaing.techcup.payment.exception.PaymentOrderNotPendingExcepti
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 public final class PaymentOrder extends AggregateRoot {
 
     private static final long DEFAULT_EXPIRATION_MINUTES = 60;
+    private static final String NOT_AWAITING_BANK_CONFIRMATION_MESSAGE =
+            "La orden %s no está en estado AWAITING_BANK_CONFIRMATION (actual: %s)";
 
     private final String enrollmentId;
     private final String teamId;
@@ -24,36 +27,37 @@ public final class PaymentOrder extends AggregateRoot {
     private Payer payer;
     private Long version;
 
-    private PaymentOrder(UUID paymentOrderId, String enrollmentId, String teamId, String tournamentId,
-            BigDecimal amount, PaymentOrderStatus status, String mpPaymentId, String idempotencyKey,
-            String externalResourceUrl, Payer payer, LocalDateTime expiresAt, Long version) {
-        super(paymentOrderId);
-        this.enrollmentId = requireNonBlank(enrollmentId, "enrollmentId");
-        this.teamId = requireNonBlank(teamId, "teamId");
-        this.tournamentId = requireNonBlank(tournamentId, "tournamentId");
-        this.amount = requirePositive(amount);
-        this.status = status;
-        this.mpPaymentId = mpPaymentId;
-        this.idempotencyKey = requireNonBlank(idempotencyKey, "idempotencyKey");
-        this.externalResourceUrl = externalResourceUrl;
-        this.payer = payer;
-        this.expiresAt = expiresAt;
-        this.version = version;
+    private PaymentOrder(Builder builder) {
+        super(builder.paymentOrderId);
+        this.enrollmentId = requireNonBlank(builder.enrollmentId, "enrollmentId");
+        this.teamId = requireNonBlank(builder.teamId, "teamId");
+        this.tournamentId = requireNonBlank(builder.tournamentId, "tournamentId");
+        this.amount = requirePositive(builder.amount);
+        this.status = builder.status;
+        this.mpPaymentId = builder.mpPaymentId;
+        this.idempotencyKey = requireNonBlank(builder.idempotencyKey, "idempotencyKey");
+        this.externalResourceUrl = builder.externalResourceUrl;
+        this.payer = builder.payer;
+        this.expiresAt = builder.expiresAt;
+        this.version = builder.version;
     }
 
     public static PaymentOrder create(String enrollmentId, String teamId, String tournamentId, BigDecimal amount) {
-        LocalDateTime now = LocalDateTime.now();
-        return new PaymentOrder(UUID.randomUUID(), enrollmentId, teamId, tournamentId, amount,
-                PaymentOrderStatus.PENDING, null, UUID.randomUUID().toString(), null, null,
-                now.plusMinutes(DEFAULT_EXPIRATION_MINUTES), null);
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        return builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId(enrollmentId)
+                .teamId(teamId)
+                .tournamentId(tournamentId)
+                .amount(amount)
+                .status(PaymentOrderStatus.PENDING)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(now.plusMinutes(DEFAULT_EXPIRATION_MINUTES))
+                .build();
     }
 
-    public static PaymentOrder reconstruct(UUID paymentOrderId, String enrollmentId, String teamId,
-            String tournamentId, BigDecimal amount, PaymentOrderStatus status, String mpPaymentId,
-            String idempotencyKey, String externalResourceUrl, Payer payer, LocalDateTime expiresAt,
-            Long version) {
-        return new PaymentOrder(paymentOrderId, enrollmentId, teamId, tournamentId, amount, status,
-                mpPaymentId, idempotencyKey, externalResourceUrl, payer, expiresAt, version);
+    public static Builder builder() {
+        return new Builder();
     }
 
     public void startPseTransaction(Payer payer, String financialInstitution) {
@@ -80,7 +84,7 @@ public final class PaymentOrder extends AggregateRoot {
     public void assignGatewayReference(String mpPaymentId, String externalResourceUrl) {
         if (status != PaymentOrderStatus.AWAITING_BANK_CONFIRMATION) {
             throw new PaymentOrderNotAwaitingBankConfirmationException(
-                    "La orden %s no está en estado AWAITING_BANK_CONFIRMATION (actual: %s)".formatted(getId(), status));
+                    NOT_AWAITING_BANK_CONFIRMATION_MESSAGE.formatted(getId(), status));
         }
         this.mpPaymentId = mpPaymentId;
         this.externalResourceUrl = externalResourceUrl;
@@ -89,7 +93,7 @@ public final class PaymentOrder extends AggregateRoot {
     public void approve(String mpPaymentId) {
         if (status != PaymentOrderStatus.AWAITING_BANK_CONFIRMATION) {
             throw new PaymentOrderNotAwaitingBankConfirmationException(
-                    "La orden %s no está en estado AWAITING_BANK_CONFIRMATION (actual: %s)".formatted(getId(), status));
+                    NOT_AWAITING_BANK_CONFIRMATION_MESSAGE.formatted(getId(), status));
         }
         this.mpPaymentId = mpPaymentId;
         this.status = PaymentOrderStatus.APPROVED;
@@ -98,7 +102,7 @@ public final class PaymentOrder extends AggregateRoot {
     public void reject() {
         if (status != PaymentOrderStatus.AWAITING_BANK_CONFIRMATION) {
             throw new PaymentOrderNotAwaitingBankConfirmationException(
-                    "La orden %s no está en estado AWAITING_BANK_CONFIRMATION (actual: %s)".formatted(getId(), status));
+                    NOT_AWAITING_BANK_CONFIRMATION_MESSAGE.formatted(getId(), status));
         }
         this.status = PaymentOrderStatus.REJECTED;
     }
@@ -162,6 +166,16 @@ public final class PaymentOrder extends AggregateRoot {
         return version;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        return super.equals(other);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
     private static String requireNonBlank(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("%s es obligatorio".formatted(fieldName));
@@ -174,5 +188,87 @@ public final class PaymentOrder extends AggregateRoot {
             throw new IllegalArgumentException("El monto debe ser mayor que cero");
         }
         return amount;
+    }
+
+    public static final class Builder {
+        private UUID paymentOrderId;
+        private String enrollmentId;
+        private String teamId;
+        private String tournamentId;
+        private BigDecimal amount;
+        private PaymentOrderStatus status;
+        private String mpPaymentId;
+        private String idempotencyKey;
+        private String externalResourceUrl;
+        private Payer payer;
+        private LocalDateTime expiresAt;
+        private Long version;
+
+        private Builder() {
+        }
+
+        public Builder paymentOrderId(UUID paymentOrderId) {
+            this.paymentOrderId = paymentOrderId;
+            return this;
+        }
+
+        public Builder enrollmentId(String enrollmentId) {
+            this.enrollmentId = enrollmentId;
+            return this;
+        }
+
+        public Builder teamId(String teamId) {
+            this.teamId = teamId;
+            return this;
+        }
+
+        public Builder tournamentId(String tournamentId) {
+            this.tournamentId = tournamentId;
+            return this;
+        }
+
+        public Builder amount(BigDecimal amount) {
+            this.amount = amount;
+            return this;
+        }
+
+        public Builder status(PaymentOrderStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder mpPaymentId(String mpPaymentId) {
+            this.mpPaymentId = mpPaymentId;
+            return this;
+        }
+
+        public Builder idempotencyKey(String idempotencyKey) {
+            this.idempotencyKey = idempotencyKey;
+            return this;
+        }
+
+        public Builder externalResourceUrl(String externalResourceUrl) {
+            this.externalResourceUrl = externalResourceUrl;
+            return this;
+        }
+
+        public Builder payer(Payer payer) {
+            this.payer = payer;
+            return this;
+        }
+
+        public Builder expiresAt(LocalDateTime expiresAt) {
+            this.expiresAt = expiresAt;
+            return this;
+        }
+
+        public Builder version(Long version) {
+            this.version = version;
+            return this;
+        }
+
+        public PaymentOrder build() {
+            return new PaymentOrder(this);
+        }
     }
 }

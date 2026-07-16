@@ -165,9 +165,20 @@ class PaymentOrderTest {
     void reconstructRebuildsFromPersistedData() {
         UUID id = UUID.randomUUID();
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(30);
-        PaymentOrder order = PaymentOrder.reconstruct(id, "enr-1", "team-1", "tournament-1", new BigDecimal("50000"),
-                PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, "mp-1", "idem-1", "https://mp.test/1", VALID_PAYER,
-                expiresAt, 3L);
+        PaymentOrder order = PaymentOrder.builder()
+                .paymentOrderId(id)
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION)
+                .mpPaymentId("mp-1")
+                .idempotencyKey("idem-1")
+                .externalResourceUrl("https://mp.test/1")
+                .payer(VALID_PAYER)
+                .expiresAt(expiresAt)
+                .version(3L)
+                .build();
 
         assertThat(order.getId()).isEqualTo(id);
         assertThat(order.getStatus()).isEqualTo(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION);
