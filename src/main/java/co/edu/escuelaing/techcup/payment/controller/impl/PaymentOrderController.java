@@ -112,13 +112,28 @@ public class PaymentOrderController {
      * X-Forwarded-For may carry a comma-separated proxy chain; the first entry
      * is the original client. Falls back to the socket address when the
      * service is reached directly (e.g. local/dev, no reverse proxy in front).
+     * Azure App Service appends the client's port to that entry (e.g.
+     * "203.0.113.5:52341"); Mercado Pago rejects additional_info.ip_address
+     * if it isn't a bare IP, so the port must be stripped.
      */
     private String resolveClientIp(HttpServletRequest request) {
         String forwardedFor = request.getHeader("X-Forwarded-For");
         if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
+            return stripPort(forwardedFor.split(",")[0].trim());
         }
-        return request.getRemoteAddr();
+        return stripPort(request.getRemoteAddr());
+    }
+
+    private String stripPort(String hostAndMaybePort) {
+        if (hostAndMaybePort.startsWith("[")) {
+            int closingBracket = hostAndMaybePort.indexOf(']');
+            return closingBracket >= 0 ? hostAndMaybePort.substring(1, closingBracket) : hostAndMaybePort;
+        }
+        int colonCount = hostAndMaybePort.length() - hostAndMaybePort.replace(":", "").length();
+        if (colonCount == 1) {
+            return hostAndMaybePort.substring(0, hostAndMaybePort.indexOf(':'));
+        }
+        return hostAndMaybePort;
     }
 
     @Operation(summary = "Receive a Mercado Pago webhook notification",
