@@ -39,9 +39,18 @@ class ProcessPaymentWebhookServiceTest {
     }
 
     private PaymentOrder awaitingOrder(String mpPaymentId) {
-        return PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, mpPaymentId,
-                UUID.randomUUID().toString(), null, null, LocalDateTime.now().plusMinutes(30), 0L);
+        return PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION)
+                .mpPaymentId(mpPaymentId)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
+                .version(0L)
+                .build();
     }
 
     @Nested
@@ -118,9 +127,18 @@ class ProcessPaymentWebhookServiceTest {
         @Test
         @DisplayName("no falla si la orden ya no está AWAITING_BANK_CONFIRMATION (notificación duplicada)")
         void doesNotFailOnDuplicateNotification() {
-            PaymentOrder order = PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                    new BigDecimal("50000"), PaymentOrderStatus.APPROVED, "mp-6", UUID.randomUUID().toString(),
-                    null, null, LocalDateTime.now().plusMinutes(30), 0L);
+            PaymentOrder order = PaymentOrder.builder()
+                    .paymentOrderId(UUID.randomUUID())
+                    .enrollmentId("enr-1")
+                    .teamId("team-1")
+                    .tournamentId("tournament-1")
+                    .amount(new BigDecimal("50000"))
+                    .status(PaymentOrderStatus.APPROVED)
+                    .mpPaymentId("mp-6")
+                    .idempotencyKey(UUID.randomUUID().toString())
+                    .expiresAt(LocalDateTime.now().plusMinutes(30))
+                    .version(0L)
+                    .build();
             when(paymentOrderRepository.findByMpPaymentId("mp-6")).thenReturn(Optional.of(order));
             when(paymentGateway.getPaymentStatus("mp-6")).thenReturn(new PaymentStatusResult("mp-6", "approved"));
 

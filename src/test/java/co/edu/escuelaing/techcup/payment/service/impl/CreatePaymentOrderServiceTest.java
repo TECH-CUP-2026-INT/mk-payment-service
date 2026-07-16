@@ -67,7 +67,8 @@ class CreatePaymentOrderServiceTest {
         void rejectsAboveMax() {
             when(paymentMethodLimitsRepository.findById("pse")).thenReturn(Optional.of(PSE_LIMITS));
 
-            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", new BigDecimal("999999")))
+            BigDecimal amount = new BigDecimal("999999");
+            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", amount))
                     .isInstanceOf(AmountOutOfRangeException.class);
             verify(paymentOrderRepository, never()).save(any());
         }
@@ -77,7 +78,8 @@ class CreatePaymentOrderServiceTest {
         void rejectsBelowMin() {
             when(paymentMethodLimitsRepository.findById("pse")).thenReturn(Optional.of(PSE_LIMITS));
 
-            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", new BigDecimal("100")))
+            BigDecimal amount = new BigDecimal("100");
+            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", amount))
                     .isInstanceOf(AmountOutOfRangeException.class);
             verify(paymentOrderRepository, never()).save(any());
         }
@@ -87,7 +89,8 @@ class CreatePaymentOrderServiceTest {
         void rejectsWhenNoLimitsCached() {
             when(paymentMethodLimitsRepository.findById("pse")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", new BigDecimal("50000")))
+            BigDecimal amount = new BigDecimal("50000");
+            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", amount))
                     .isInstanceOf(AmountOutOfRangeException.class);
             verify(paymentOrderRepository, never()).save(any());
         }
@@ -103,7 +106,8 @@ class CreatePaymentOrderServiceTest {
             when(paymentMethodLimitsRepository.findById("pse")).thenReturn(Optional.of(PSE_LIMITS));
             when(paymentOrderRepository.existsByEnrollmentId("enr-1")).thenReturn(true);
 
-            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", new BigDecimal("50000")))
+            BigDecimal amount = new BigDecimal("50000");
+            assertThatThrownBy(() -> service.create("enr-1", "team-1", "tournament-1", amount))
                     .isInstanceOf(DuplicateEnrollmentOrderException.class);
             verify(paymentOrderRepository, never()).save(any());
         }

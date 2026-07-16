@@ -5,12 +5,13 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class PaymentOrderAuditListener {
 
     @PrePersist
     public void onPrePersist(PaymentOrderEntity entity) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         if (entity.getCreatedAt() == null) {
             entity.setCreatedAt(now);
         }
@@ -19,6 +20,6 @@ public class PaymentOrderAuditListener {
 
     @PreUpdate
     public void onPreUpdate(PaymentOrderEntity entity) {
-        entity.setUpdatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
     }
 }

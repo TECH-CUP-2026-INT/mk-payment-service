@@ -51,8 +51,17 @@ class SubmitPseTransactionServiceTest {
     }
 
     private PaymentOrder orderWith(PaymentOrderStatus status, LocalDateTime expiresAt) {
-        return PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), status, null, UUID.randomUUID().toString(), null, null, expiresAt, 0L);
+        return PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(status)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(expiresAt)
+                .version(0L)
+                .build();
     }
 
     @Nested

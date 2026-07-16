@@ -37,9 +37,18 @@ class GetPaymentOrderStatusServiceTest {
         @Test
         @DisplayName("devuelve la orden encontrada por enrollmentId")
         void returnsOrder() {
-            PaymentOrder order = PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                    new BigDecimal("50000"), PaymentOrderStatus.APPROVED, "mp-1", UUID.randomUUID().toString(),
-                    null, null, LocalDateTime.now().plusMinutes(30), 0L);
+            PaymentOrder order = PaymentOrder.builder()
+                    .paymentOrderId(UUID.randomUUID())
+                    .enrollmentId("enr-1")
+                    .teamId("team-1")
+                    .tournamentId("tournament-1")
+                    .amount(new BigDecimal("50000"))
+                    .status(PaymentOrderStatus.APPROVED)
+                    .mpPaymentId("mp-1")
+                    .idempotencyKey(UUID.randomUUID().toString())
+                    .expiresAt(LocalDateTime.now().plusMinutes(30))
+                    .version(0L)
+                    .build();
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
 
             assertThat(service.getByEnrollmentId("enr-1")).isEqualTo(order);
