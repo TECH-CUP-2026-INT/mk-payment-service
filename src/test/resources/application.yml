@@ -12,3 +12,4 @@ mercadopago:
   access-token: test-access-token
   public-key: test-public-key
   notification-url: https://example-test-tunnel.invalid/payment-orders/webhook
+  callback-url: https://example-frontend.invalid/checkout/pse-return

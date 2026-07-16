@@ -8,3 +8,4 @@ mercadopago:
   access-token: ${MP_ACCESS_TOKEN_PROD}
   public-key: ${MP_PUBLIC_KEY_PROD}
   notification-url: ${MP_NOTIFICATION_URL_PROD}
+  callback-url: ${MP_CALLBACK_URL_PROD}

@@ -16,7 +16,8 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 
 class PaymentOrderTest {
 
-    private static final Payer VALID_PAYER = new Payer("pagador@correo.com", "CC", "123456789", "individual");
+    private static final Payer VALID_PAYER = new Payer("pagador@correo.com", "CC", "123456789", "individual",
+            "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
 
     private PaymentOrder pendingOrder() {
         return PaymentOrder.create("enr-1", "team-1", "tournament-1", new BigDecimal("50000"));

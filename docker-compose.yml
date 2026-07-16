@@ -11,6 +11,7 @@ services:
       MP_ACCESS_TOKEN_DEV: ${MP_ACCESS_TOKEN_DEV}
       MP_PUBLIC_KEY_DEV: ${MP_PUBLIC_KEY_DEV}
       MP_NOTIFICATION_URL_DEV: ${MP_NOTIFICATION_URL_DEV:-https://REPLACE-WITH-YOUR-NGROK-URL.ngrok-free.app/payment-orders/webhook}
+      MP_CALLBACK_URL_DEV: ${MP_CALLBACK_URL_DEV:-https://REPLACE-WITH-YOUR-FRONTEND-URL/checkout/pse-return}
     depends_on:
       - postgres
     restart: on-failure

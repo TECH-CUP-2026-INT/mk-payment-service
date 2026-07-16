@@ -1,0 +1,9 @@
+ALTER TABLE payment_orders ADD COLUMN payer_first_name VARCHAR(32);
+ALTER TABLE payment_orders ADD COLUMN payer_last_name VARCHAR(32);
+ALTER TABLE payment_orders ADD COLUMN payer_address_zip_code VARCHAR(5);
+ALTER TABLE payment_orders ADD COLUMN payer_address_street_name VARCHAR(18);
+ALTER TABLE payment_orders ADD COLUMN payer_address_street_number VARCHAR(5);
+ALTER TABLE payment_orders ADD COLUMN payer_address_neighborhood VARCHAR(18);
+ALTER TABLE payment_orders ADD COLUMN payer_address_city VARCHAR(18);
+ALTER TABLE payment_orders ADD COLUMN payer_phone_area_code VARCHAR(3);
+ALTER TABLE payment_orders ADD COLUMN payer_phone_number VARCHAR(5);

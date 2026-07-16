@@ -13,3 +13,8 @@ mercadopago:
   # MP_NOTIFICATION_URL_DEV to the tunnel's public HTTPS URL before testing
   # the webhook flow (TC-PAY-03) end to end.
   notification-url: ${MP_NOTIFICATION_URL_DEV:https://REPLACE-WITH-YOUR-NGROK-URL.ngrok-free.app/payment-orders/webhook}
+  # callback-url is a FRONTEND URL: Mercado Pago redirects the shopper's
+  # browser here after PSE bank authentication so the Status Screen Brick can
+  # read payment_id from the query string. It must NOT point at this
+  # backend's own webhook endpoint (that's notification-url, above).
+  callback-url: ${MP_CALLBACK_URL_DEV:https://REPLACE-WITH-YOUR-FRONTEND-URL/checkout/pse-return}

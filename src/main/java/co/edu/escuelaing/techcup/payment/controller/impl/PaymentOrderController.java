@@ -12,6 +12,7 @@ import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.ProcessPaymentWebhookUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.SubmitPseTransactionUseCase;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,10 +58,23 @@ public class PaymentOrderController {
 
     @PostMapping("/{enrollmentId}/pse")
     public ResponseEntity<SubmitPseTransactionResponse> submitPse(@PathVariable String enrollmentId,
-            @Valid @RequestBody SubmitPseTransactionRequest request) {
+            @Valid @RequestBody SubmitPseTransactionRequest request, HttpServletRequest httpRequest) {
         PaymentOrder paymentOrder = submitPseTransactionUseCase.submit(
-                enrollmentId, mapper.toPayer(request), request.financialInstitution());
+                enrollmentId, mapper.toPayer(request), request.financialInstitution(), resolveClientIp(httpRequest));
         return ResponseEntity.ok(mapper.toSubmitPseResponse(paymentOrder));
+    }
+
+    /**
+     * X-Forwarded-For may carry a comma-separated proxy chain; the first entry
+     * is the original client. Falls back to the socket address when the
+     * service is reached directly (e.g. local/dev, no reverse proxy in front).
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @PostMapping("/webhook")

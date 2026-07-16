@@ -32,8 +32,11 @@ import static org.mockito.Mockito.when;
 
 class SubmitPseTransactionServiceTest {
 
-    private static final Payer PAYER = new Payer("pagador@correo.com", "CC", "123456789", "individual");
+    private static final Payer PAYER = new Payer("pagador@correo.com", "CC", "123456789", "individual",
+            "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
+    private static final String CALLBACK_URL = "https://example-frontend.invalid/checkout/pse-return";
     private static final String NOTIFICATION_URL = "https://example-test-tunnel.invalid/payment-orders/webhook";
+    private static final String IP_ADDRESS = "200.10.20.30";
 
     private PaymentOrderRepositoryPort paymentOrderRepository;
     private PaymentGatewayPort paymentGateway;
@@ -43,7 +46,7 @@ class SubmitPseTransactionServiceTest {
     void setUp() {
         paymentOrderRepository = mock(PaymentOrderRepositoryPort.class);
         paymentGateway = mock(PaymentGatewayPort.class);
-        service = new SubmitPseTransactionService(paymentOrderRepository, paymentGateway, NOTIFICATION_URL);
+        service = new SubmitPseTransactionService(paymentOrderRepository, paymentGateway, CALLBACK_URL, NOTIFICATION_URL);
         when(paymentOrderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -61,10 +64,10 @@ class SubmitPseTransactionServiceTest {
         void submitsSuccessfully() {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().plusMinutes(60));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
-            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any()))
+            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(new PseTransactionResult("mp-1", "pending", "https://mp.test/ticket/1"));
 
-            PaymentOrder result = service.submit("enr-1", PAYER, "1007");
+            PaymentOrder result = service.submit("enr-1", PAYER, "1007", IP_ADDRESS);
 
             assertThat(result.getStatus()).isEqualTo(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION);
             assertThat(result.getMpPaymentId()).isEqualTo("mp-1");
@@ -82,7 +85,7 @@ class SubmitPseTransactionServiceTest {
         void rejectsWhenNoOrder() {
             when(paymentOrderRepository.findByEnrollmentId("enr-x")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.submit("enr-x", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-x", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentOrderNotFoundException.class);
         }
     }
@@ -97,7 +100,7 @@ class SubmitPseTransactionServiceTest {
             PaymentOrder order = orderWith(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, LocalDateTime.now().plusMinutes(60));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
 
-            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentOrderNotPendingException.class);
         }
     }
@@ -112,7 +115,7 @@ class SubmitPseTransactionServiceTest {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().minusMinutes(1));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
 
-            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentOrderExpiredException.class);
 
             assertThat(order.getStatus()).isEqualTo(PaymentOrderStatus.EXPIRED);
@@ -125,7 +128,7 @@ class SubmitPseTransactionServiceTest {
             PaymentOrder order = orderWith(PaymentOrderStatus.EXPIRED, LocalDateTime.now().minusMinutes(1));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
 
-            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentOrderExpiredException.class);
             verify(paymentOrderRepository, never()).save(any());
         }
@@ -137,7 +140,7 @@ class SubmitPseTransactionServiceTest {
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
             when(paymentOrderRepository.save(order)).thenThrow(new OptimisticLockingFailureException("optimistic lock conflict"));
 
-            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentOrderExpiredException.class);
         }
     }
@@ -151,10 +154,10 @@ class SubmitPseTransactionServiceTest {
         void wrapsGatewayFailure() {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().plusMinutes(60));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
-            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any()))
+            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
                     .thenThrow(new RuntimeException("Mercado Pago no disponible"));
 
-            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007"))
+            assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))
                     .isInstanceOf(PaymentGatewayException.class);
 
             verify(paymentOrderRepository, never()).save(any());
