@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -39,6 +40,6 @@ public class SyncPaymentMethodsService implements SyncPaymentMethodsUseCase {
 
     private void upsertLimits(PaymentMethodInfo pse) {
         paymentMethodLimitsRepository.save(new PaymentMethodLimits(
-                pse.id(), pse.minAllowedAmount(), pse.maxAllowedAmount(), pse.status(), LocalDateTime.now()));
+                pse.id(), pse.minAllowedAmount(), pse.maxAllowedAmount(), pse.status(), LocalDateTime.now(ZoneId.systemDefault())));
     }
 }

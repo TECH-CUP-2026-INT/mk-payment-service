@@ -24,9 +24,20 @@ class PaymentOrderPersistenceMapperTest {
         UUID id = UUID.randomUUID();
         Payer payer = new Payer("payer@test.com", "CC", "123456", "individual",
                 "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
-        PaymentOrder order = PaymentOrder.reconstruct(id, "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, "mp-1",
-                "idem-1", "https://mp.test/ticket", payer, LocalDateTime.now().plusMinutes(30), 3L);
+        PaymentOrder order = PaymentOrder.builder()
+                .paymentOrderId(id)
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.AWAITING_BANK_CONFIRMATION)
+                .mpPaymentId("mp-1")
+                .idempotencyKey("idem-1")
+                .externalResourceUrl("https://mp.test/ticket")
+                .payer(payer)
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
+                .version(3L)
+                .build();
 
         PaymentOrderEntity entity = mapper.toEntity(order);
 
@@ -58,9 +69,16 @@ class PaymentOrderPersistenceMapperTest {
     @Test
     @DisplayName("toEntity deja los campos del pagador y la versión en null cuando la orden aún no los tiene")
     void mapsDomainToEntityWithoutPayer() {
-        PaymentOrder order = PaymentOrder.reconstruct(UUID.randomUUID(), "enr-2", "team-2", "tournament-2",
-                new BigDecimal("30000"), PaymentOrderStatus.PENDING, null, "idem-2", null, null,
-                LocalDateTime.now().plusMinutes(60), null);
+        PaymentOrder order = PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-2")
+                .teamId("team-2")
+                .tournamentId("tournament-2")
+                .amount(new BigDecimal("30000"))
+                .status(PaymentOrderStatus.PENDING)
+                .idempotencyKey("idem-2")
+                .expiresAt(LocalDateTime.now().plusMinutes(60))
+                .build();
 
         PaymentOrderEntity entity = mapper.toEntity(order);
 

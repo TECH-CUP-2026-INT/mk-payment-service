@@ -25,6 +25,8 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoGatewayAdapter.class);
     private static final String PSE_PAYMENT_METHOD_ID = PaymentMethodId.PSE;
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final RestClient restClient;
     private final String accessToken;
@@ -62,7 +64,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         try {
             PaymentApiResponse response = restClient.post()
                     .uri("/v1/payments")
-                    .header("Authorization", "Bearer " + accessToken)
+                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
                     .header("X-Idempotency-Key", idempotencyKey)
                     .body(new CreatePaymentApiRequest(
                             PSE_PAYMENT_METHOD_ID,
@@ -99,7 +101,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         try {
             PaymentApiResponse response = restClient.get()
                     .uri("/v1/payments/{id}", mpPaymentId)
-                    .header("Authorization", "Bearer " + accessToken)
+                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
                     .retrieve()
                     .body(PaymentApiResponse.class);
             if (response == null) {
@@ -121,7 +123,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         try {
             PaymentMethodApiResponse[] response = restClient.get()
                     .uri("/v1/payment_methods")
-                    .header("Authorization", "Bearer " + accessToken)
+                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
                     .retrieve()
                     .body(PaymentMethodApiResponse[].class);
             if (response == null) {

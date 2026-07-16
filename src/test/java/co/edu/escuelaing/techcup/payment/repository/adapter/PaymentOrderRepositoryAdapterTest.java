@@ -18,7 +18,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,9 +36,16 @@ class PaymentOrderRepositoryAdapterTest {
     }
 
     private static PaymentOrder anOrder() {
-        return PaymentOrder.reconstruct(UUID.randomUUID(), "enr-1", "team-1", "tournament-1",
-                new BigDecimal("50000"), PaymentOrderStatus.PENDING, null, UUID.randomUUID().toString(),
-                null, null, LocalDateTime.now().plusMinutes(60), null);
+        return PaymentOrder.builder()
+                .paymentOrderId(UUID.randomUUID())
+                .enrollmentId("enr-1")
+                .teamId("team-1")
+                .tournamentId("tournament-1")
+                .amount(new BigDecimal("50000"))
+                .status(PaymentOrderStatus.PENDING)
+                .idempotencyKey(UUID.randomUUID().toString())
+                .expiresAt(LocalDateTime.now().plusMinutes(60))
+                .build();
     }
 
     @Test
@@ -110,6 +116,6 @@ class PaymentOrderRepositoryAdapterTest {
 
         assertThat(result).hasSize(1);
         verify(jpaRepository).findByStatusInAndExpiresAtBefore(
-                eq(List.of("PENDING", "AWAITING_BANK_CONFIRMATION")), eq(before));
+                List.of("PENDING", "AWAITING_BANK_CONFIRMATION"), before);
     }
 }
