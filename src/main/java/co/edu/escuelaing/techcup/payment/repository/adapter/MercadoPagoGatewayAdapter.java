@@ -8,6 +8,7 @@ import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     private final RestClient restClient;
     private final String accessToken;
 
+    @Autowired
     public MercadoPagoGatewayAdapter(
             @Value("${mercadopago.base-url}") String baseUrl,
             @Value("${mercadopago.access-token}") String accessToken,
@@ -39,6 +41,12 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                 .build();
     }
 
+    /**
+     * Test-only: lets MercadoPagoGatewayAdapterTest inject a RestClient bound
+     * to MockRestServiceServer. Spring never sees this one — @Autowired above
+     * pins the constructor it must use, since it can't disambiguate on its own
+     * once a class has more than one constructor.
+     */
     MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
         this.restClient = restClient;
         this.accessToken = accessToken;
