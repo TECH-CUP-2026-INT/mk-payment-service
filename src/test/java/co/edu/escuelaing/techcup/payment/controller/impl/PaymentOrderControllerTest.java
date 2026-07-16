@@ -119,6 +119,38 @@ class PaymentOrderControllerTest {
     }
 
     @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse despoja el puerto que Azure agrega a X-Forwarded-For")
+    void submitsPseTransactionStrippingForwardedForPort() throws Exception {
+        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5")))
+                .thenReturn(anOrder());
+        SubmitPseTransactionRequest request = aPseRequest("individual");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .header("X-Forwarded-For", "203.0.113.5:52341, 10.0.0.1:443")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5"));
+    }
+
+    @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse despoja el puerto de una IPv6 entre corchetes")
+    void submitsPseTransactionStrippingIpv6Port() throws Exception {
+        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("2001:db8::1")))
+                .thenReturn(anOrder());
+        SubmitPseTransactionRequest request = aPseRequest("individual");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .header("X-Forwarded-For", "[2001:db8::1]:52341")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("2001:db8::1"));
+    }
+
+    @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType fuera del catálogo permitido")
     void rejectsInvalidEntityType() throws Exception {
         SubmitPseTransactionRequest request = aPseRequest("company");
