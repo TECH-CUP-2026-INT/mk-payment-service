@@ -77,13 +77,17 @@ class PaymentOrderControllerTest {
                 .andExpect(status().isCreated());
     }
 
+    private static SubmitPseTransactionRequest aPseRequest(String entityType) {
+        return new SubmitPseTransactionRequest("1007", "payer@test.com", "CC", "123456", entityType,
+                "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
+    }
+
     @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pse envía la transacción y devuelve 200")
     void submitsPseTransaction() throws Exception {
-        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007")))
+        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), any()))
                 .thenReturn(anOrder());
-        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
-                "1007", "payer@test.com", "CC", "123456", "individual");
+        SubmitPseTransactionRequest request = aPseRequest("individual");
 
         mockMvc.perform(post("/payment-orders/enr-1/pse")
                         .contentType("application/json")
@@ -92,31 +96,45 @@ class PaymentOrderControllerTest {
     }
 
     @Test
+    @DisplayName("POST /payment-orders/{enrollmentId}/pse usa el primer IP de X-Forwarded-For como ipAddress")
+    void submitsPseTransactionHonoringForwardedFor() throws Exception {
+        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5")))
+                .thenReturn(anOrder());
+        SubmitPseTransactionRequest request = aPseRequest("individual");
+
+        mockMvc.perform(post("/payment-orders/enr-1/pse")
+                        .header("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5"));
+    }
+
+    @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType fuera del catálogo permitido")
     void rejectsInvalidEntityType() throws Exception {
-        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
-                "1007", "payer@test.com", "CC", "123456", "company");
+        SubmitPseTransactionRequest request = aPseRequest("company");
 
         mockMvc.perform(post("/payment-orders/enr-1/pse")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
-        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType en blanco")
     void rejectsBlankEntityType() throws Exception {
-        SubmitPseTransactionRequest request = new SubmitPseTransactionRequest(
-                "1007", "payer@test.com", "CC", "123456", " ");
+        SubmitPseTransactionRequest request = aPseRequest(" ");
 
         mockMvc.perform(post("/payment-orders/enr-1/pse")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
-        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any());
+        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any(), any());
     }
 
     @Test

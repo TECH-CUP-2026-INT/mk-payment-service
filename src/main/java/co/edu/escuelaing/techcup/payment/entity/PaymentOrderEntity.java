@@ -1,6 +1,7 @@
 package co.edu.escuelaing.techcup.payment.entity;
 
 import co.edu.escuelaing.techcup.payment.config.PaymentOrderAuditListener;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
@@ -57,6 +58,33 @@ public class PaymentOrderEntity {
     private String payerIdNumber;
 
     private String payerEntityType;
+
+    @Column(length = 32)
+    private String payerFirstName;
+
+    @Column(length = 32)
+    private String payerLastName;
+
+    @Column(length = 5)
+    private String payerAddressZipCode;
+
+    @Column(length = 18)
+    private String payerAddressStreetName;
+
+    @Column(length = 5)
+    private String payerAddressStreetNumber;
+
+    @Column(length = 18)
+    private String payerAddressNeighborhood;
+
+    @Column(length = 18)
+    private String payerAddressCity;
+
+    @Column(length = 3)
+    private String payerPhoneAreaCode;
+
+    @Column(length = 5)
+    private String payerPhoneNumber;
 
     private LocalDateTime expiresAt;
 

@@ -22,7 +22,8 @@ class PaymentOrderPersistenceMapperTest {
     @DisplayName("toEntity copia todos los campos del dominio, incluyendo el pagador aplanado")
     void mapsDomainToEntityWithPayer() {
         UUID id = UUID.randomUUID();
-        Payer payer = new Payer("payer@test.com", "CC", "123456", "individual");
+        Payer payer = new Payer("payer@test.com", "CC", "123456", "individual",
+                "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
         PaymentOrder order = PaymentOrder.reconstruct(id, "enr-1", "team-1", "tournament-1",
                 new BigDecimal("50000"), PaymentOrderStatus.AWAITING_BANK_CONFIRMATION, "mp-1",
                 "idem-1", "https://mp.test/ticket", payer, LocalDateTime.now().plusMinutes(30), 3L);
@@ -42,6 +43,15 @@ class PaymentOrderPersistenceMapperTest {
         assertThat(entity.getPayerIdType()).isEqualTo("CC");
         assertThat(entity.getPayerIdNumber()).isEqualTo("123456");
         assertThat(entity.getPayerEntityType()).isEqualTo("individual");
+        assertThat(entity.getPayerFirstName()).isEqualTo("Juan");
+        assertThat(entity.getPayerLastName()).isEqualTo("Pérez");
+        assertThat(entity.getPayerAddressZipCode()).isEqualTo("11001");
+        assertThat(entity.getPayerAddressStreetName()).isEqualTo("Calle 1");
+        assertThat(entity.getPayerAddressStreetNumber()).isEqualTo("123");
+        assertThat(entity.getPayerAddressNeighborhood()).isEqualTo("Centro");
+        assertThat(entity.getPayerAddressCity()).isEqualTo("Bogotá");
+        assertThat(entity.getPayerPhoneAreaCode()).isEqualTo("601");
+        assertThat(entity.getPayerPhoneNumber()).isEqualTo("12345");
         assertThat(entity.getVersion()).isEqualTo(3);
     }
 
@@ -58,6 +68,15 @@ class PaymentOrderPersistenceMapperTest {
         assertThat(entity.getPayerIdType()).isNull();
         assertThat(entity.getPayerIdNumber()).isNull();
         assertThat(entity.getPayerEntityType()).isNull();
+        assertThat(entity.getPayerFirstName()).isNull();
+        assertThat(entity.getPayerLastName()).isNull();
+        assertThat(entity.getPayerAddressZipCode()).isNull();
+        assertThat(entity.getPayerAddressStreetName()).isNull();
+        assertThat(entity.getPayerAddressStreetNumber()).isNull();
+        assertThat(entity.getPayerAddressNeighborhood()).isNull();
+        assertThat(entity.getPayerAddressCity()).isNull();
+        assertThat(entity.getPayerPhoneAreaCode()).isNull();
+        assertThat(entity.getPayerPhoneNumber()).isNull();
         assertThat(entity.getVersion()).isNull();
     }
 
@@ -80,6 +99,15 @@ class PaymentOrderPersistenceMapperTest {
         entity.setPayerIdType("CC");
         entity.setPayerIdNumber("123456");
         entity.setPayerEntityType("individual");
+        entity.setPayerFirstName("Juan");
+        entity.setPayerLastName("Pérez");
+        entity.setPayerAddressZipCode("11001");
+        entity.setPayerAddressStreetName("Calle 1");
+        entity.setPayerAddressStreetNumber("123");
+        entity.setPayerAddressNeighborhood("Centro");
+        entity.setPayerAddressCity("Bogotá");
+        entity.setPayerPhoneAreaCode("601");
+        entity.setPayerPhoneNumber("12345");
         entity.setExpiresAt(expiresAt);
         entity.setVersion(5);
 
@@ -87,7 +115,8 @@ class PaymentOrderPersistenceMapperTest {
 
         assertThat(order.getId()).isEqualTo(id);
         assertThat(order.getStatus()).isEqualTo(PaymentOrderStatus.APPROVED);
-        assertThat(order.getPayer()).isEqualTo(new Payer("payer@test.com", "CC", "123456", "individual"));
+        assertThat(order.getPayer()).isEqualTo(new Payer("payer@test.com", "CC", "123456", "individual",
+                "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345"));
         assertThat(order.getExpiresAt()).isEqualTo(expiresAt);
         assertThat(order.getVersion()).isEqualTo(5L);
     }

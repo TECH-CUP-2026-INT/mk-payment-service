@@ -21,18 +21,21 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
 
     private final PaymentOrderRepositoryPort paymentOrderRepository;
     private final PaymentGatewayPort paymentGateway;
+    private final String callbackUrl;
     private final String notificationUrl;
 
     public SubmitPseTransactionService(PaymentOrderRepositoryPort paymentOrderRepository,
             PaymentGatewayPort paymentGateway,
+            @Value("${mercadopago.callback-url}") String callbackUrl,
             @Value("${mercadopago.notification-url}") String notificationUrl) {
         this.paymentOrderRepository = paymentOrderRepository;
         this.paymentGateway = paymentGateway;
+        this.callbackUrl = callbackUrl;
         this.notificationUrl = notificationUrl;
     }
 
     @Override
-    public PaymentOrder submit(String enrollmentId, Payer payer, String financialInstitution) {
+    public PaymentOrder submit(String enrollmentId, Payer payer, String financialInstitution, String ipAddress) {
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
                         "No existe una orden de pago para enrollmentId " + enrollmentId));
@@ -44,7 +47,7 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
         PseTransactionResult result;
         try {
             result = paymentGateway.createPseTransaction(paymentOrder.getIdempotencyKey(), paymentOrder.getAmount(),
-                    financialInstitution, payer, notificationUrl);
+                    financialInstitution, payer, ipAddress, callbackUrl, notificationUrl);
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de transacción PSE", ex);
         }
