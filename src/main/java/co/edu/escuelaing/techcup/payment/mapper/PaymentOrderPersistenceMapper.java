@@ -17,6 +17,15 @@ public interface PaymentOrderPersistenceMapper {
     @Mapping(source = "payer.identificationType", target = "payerIdType")
     @Mapping(source = "payer.identificationNumber", target = "payerIdNumber")
     @Mapping(source = "payer.entityType", target = "payerEntityType")
+    @Mapping(source = "payer.firstName", target = "payerFirstName")
+    @Mapping(source = "payer.lastName", target = "payerLastName")
+    @Mapping(source = "payer.addressZipCode", target = "payerAddressZipCode")
+    @Mapping(source = "payer.addressStreetName", target = "payerAddressStreetName")
+    @Mapping(source = "payer.addressStreetNumber", target = "payerAddressStreetNumber")
+    @Mapping(source = "payer.addressNeighborhood", target = "payerAddressNeighborhood")
+    @Mapping(source = "payer.addressCity", target = "payerAddressCity")
+    @Mapping(source = "payer.phoneAreaCode", target = "payerPhoneAreaCode")
+    @Mapping(source = "payer.phoneNumber", target = "payerPhoneNumber")
     @Mapping(source = "version", target = "version", qualifiedByName = "longToInt")
     PaymentOrderEntity toEntity(PaymentOrder domain);
 
@@ -63,6 +72,10 @@ public interface PaymentOrderPersistenceMapper {
     default Payer entityToPayer(PaymentOrderEntity entity) {
         if (entity.getPayerEmail() == null) return null;
         return new Payer(entity.getPayerEmail(), entity.getPayerIdType(),
-                entity.getPayerIdNumber(), entity.getPayerEntityType());
+                entity.getPayerIdNumber(), entity.getPayerEntityType(),
+                entity.getPayerFirstName(), entity.getPayerLastName(),
+                entity.getPayerAddressZipCode(), entity.getPayerAddressStreetName(),
+                entity.getPayerAddressStreetNumber(), entity.getPayerAddressNeighborhood(),
+                entity.getPayerAddressCity(), entity.getPayerPhoneAreaCode(), entity.getPayerPhoneNumber());
     }
 }

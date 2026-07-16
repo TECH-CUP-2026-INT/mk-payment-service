@@ -30,7 +30,9 @@ import static org.mockito.Mockito.when;
 
 public class SubmitPseTransactionSteps {
 
+    private static final String CALLBACK_URL = "https://example-frontend.invalid/checkout/pse-return";
     private static final String NOTIFICATION_URL = "https://example-test-tunnel.invalid/payment-orders/webhook";
+    private static final String IP_ADDRESS = "200.10.20.30";
 
     private PaymentOrderRepositoryPort paymentOrderRepository;
     private PaymentGatewayPort paymentGateway;
@@ -42,7 +44,7 @@ public class SubmitPseTransactionSteps {
     public void setUp() {
         paymentOrderRepository = mock(PaymentOrderRepositoryPort.class);
         paymentGateway = mock(PaymentGatewayPort.class);
-        service = new SubmitPseTransactionService(paymentOrderRepository, paymentGateway, NOTIFICATION_URL);
+        service = new SubmitPseTransactionService(paymentOrderRepository, paymentGateway, CALLBACK_URL, NOTIFICATION_URL);
         result = null;
         thrownException = null;
         when(paymentOrderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -70,15 +72,16 @@ public class SubmitPseTransactionSteps {
 
     @Given("Mercado Pago acepta la transacción PSE con referencia {string} y url {string}")
     public void mercadoPagoAceptaLaTransaccion(String mpPaymentId, String url) {
-        when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any()))
+        when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PseTransactionResult(mpPaymentId, "pending", url));
     }
 
     @When("se envía la transacción PSE para el enrollmentId {string} con institución financiera {string} y pagador {string}")
     public void seEnviaLaTransaccionPse(String enrollmentId, String financialInstitution, String payerEmail) {
         try {
-            Payer payer = new Payer(payerEmail, "CC", "123456789", "individual");
-            result = service.submit(enrollmentId, payer, financialInstitution);
+            Payer payer = new Payer(payerEmail, "CC", "123456789", "individual",
+                    "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
+            result = service.submit(enrollmentId, payer, financialInstitution, IP_ADDRESS);
         } catch (Exception ex) {
             thrownException = ex;
         }

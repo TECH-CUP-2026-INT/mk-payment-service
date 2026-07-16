@@ -59,9 +59,23 @@
   "financialInstitution": "1007",
   "payerEmail": "pagador@correo.com",
   "identificationType": "CC",
-  "identificationNumber": "123456789"
+  "identificationNumber": "123456789",
+  "entityType": "individual",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "addressZipCode": "11001",
+  "addressStreetName": "Calle 1",
+  "addressStreetNumber": "123",
+  "addressNeighborhood": "Centro",
+  "addressCity": "Bogotá",
+  "phoneAreaCode": "601",
+  "phoneNumber": "12345"
 }
 ```
+
+`firstName`, `lastName`, la dirección y el teléfono son obligatorios: Mercado Pago los exige para crear un pago PSE desde el 31/12/2024. El Payment Brick (repo de frontend, fuera de este servicio) no los recoge por sí solo — el checkout necesita un formulario propio adicional al `onSubmit` del Brick para completarlos.
+
+`additional_info.ip_address`, requerido también por Mercado Pago, **no** viaja en este body: el backend lo captura del propio request HTTP (cabecera `X-Forwarded-For`, o la IP del socket si no hay proxy) para evitar que un cliente lo falsifique.
 
 **Response `200 OK`:**
 
@@ -81,6 +95,9 @@
 | `409` | La orden no está en estado `PENDING` |
 | `410` | La orden ya expiró (se persiste la expiración en el mismo request) |
 | `502` | Mercado Pago rechazó la solicitud — la orden queda en `PENDING` para reintento |
+
+!!! info "callback-url vs. notification-url"
+    Este endpoint envía a Mercado Pago dos URLs distintas, configuradas por separado (`mercadopago.callback-url` y `mercadopago.notification-url`): `callback_url` es una URL del **frontend** a la que Mercado Pago redirige al pagador después de autenticarse con su banco, para que el Payment/Status Screen Brick lea `payment_id` de la query string; `notification_url` es el webhook de **este backend** (`POST /payment-orders/webhook`, TC-PAY-03). No deben apuntar al mismo lugar.
 
 ---
 

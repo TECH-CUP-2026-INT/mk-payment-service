@@ -39,9 +39,14 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                 .build();
     }
 
+    MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
+        this.restClient = restClient;
+        this.accessToken = accessToken;
+    }
+
     @Override
     public PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
-            String financialInstitution, Payer payer, String notificationUrl) {
+            String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl) {
         try {
             PaymentApiResponse response = restClient.post()
                     .uri("/v1/payments")
@@ -51,9 +56,14 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                             PSE_PAYMENT_METHOD_ID,
                             amount,
                             new PayerApiRequest(payer.email(), payer.entityType(),
-                                    new IdentificationApiRequest(payer.identificationType(), payer.identificationNumber())),
+                                    new IdentificationApiRequest(payer.identificationType(), payer.identificationNumber()),
+                                    payer.firstName(), payer.lastName(),
+                                    new AddressApiRequest(payer.addressZipCode(), payer.addressStreetName(),
+                                            payer.addressStreetNumber(), payer.addressNeighborhood(), payer.addressCity()),
+                                    new PhoneApiRequest(payer.phoneAreaCode(), payer.phoneNumber())),
                             new TransactionDetailsApiRequest(financialInstitution),
-                            notificationUrl,
+                            new AdditionalInfoApiRequest(ipAddress),
+                            callbackUrl,
                             notificationUrl))
                     .retrieve()
                     .body(PaymentApiResponse.class);
@@ -108,15 +118,34 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("transaction_amount") BigDecimal transactionAmount,
             @JsonProperty("payer") PayerApiRequest payer,
             @JsonProperty("transaction_details") TransactionDetailsApiRequest transactionDetails,
+            @JsonProperty("additional_info") AdditionalInfoApiRequest additionalInfo,
             @JsonProperty("callback_url") String callbackUrl,
             @JsonProperty("notification_url") String notificationUrl) {
     }
 
     private record PayerApiRequest(String email, @JsonProperty("entity_type") String entityType,
-            IdentificationApiRequest identification) {
+            IdentificationApiRequest identification,
+            @JsonProperty("first_name") String firstName,
+            @JsonProperty("last_name") String lastName,
+            AddressApiRequest address,
+            PhoneApiRequest phone) {
     }
 
     private record IdentificationApiRequest(String type, String number) {
+    }
+
+    private record AddressApiRequest(
+            @JsonProperty("zip_code") String zipCode,
+            @JsonProperty("street_name") String streetName,
+            @JsonProperty("street_number") String streetNumber,
+            String neighborhood,
+            String city) {
+    }
+
+    private record PhoneApiRequest(@JsonProperty("area_code") String areaCode, String number) {
+    }
+
+    private record AdditionalInfoApiRequest(@JsonProperty("ip_address") String ipAddress) {
     }
 
     private record TransactionDetailsApiRequest(@JsonProperty("financial_institution") String financialInstitution) {
