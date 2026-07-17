@@ -84,7 +84,7 @@ jobs:
     name: Build & Publish Docker Image
     needs: build-test-analyze
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/develop'
     permissions:
       contents: read
       packages: write
@@ -127,7 +127,7 @@ jobs:
     name: Deploy a Azure App Service
     needs: dockerize-publish
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/qa'
     environment: production
 
     steps:
