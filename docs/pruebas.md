@@ -15,13 +15,13 @@ flowchart TB
 |-------|---------|--------------|-------------------|
 | Unitarias | `service/` (dominio), `service/impl` (casos de uso), `mapper/` | JUnit 5, Mockito, AssertJ | No |
 | BDD | Flujos de negocio completos de cara al consumidor (`CreatePaymentOrder`, `SubmitPseTransaction`) | Cucumber (`cucumber-java` + `cucumber-junit-platform-engine`) | No |
-| Smoke | El contexto de Spring Boot arranca correctamente con Spring Data MongoDB | `@SpringBootTest` | Sí (contra Testcontainers) |
+| Smoke | El contexto de Spring Boot arranca correctamente con Spring Data JPA | `@SpringBootTest` | Sí (contra Testcontainers) |
 
 Los tests de `service/impl` **mockean solo los puertos** (`XxxUseCase`, `XxxRepositoryPort`, `PaymentGatewayPort`) — nunca instancian un adaptador real ni levantan contexto de Spring. Los pasos de Cucumber siguen el mismo principio: `new XxxService(mock(Port.class))` directo, sin `cucumber-spring`.
 
 ## Base de datos en pruebas
 
-Solo el smoke test (`PaymentApplicationTests`) toca la base de datos. Usa Testcontainers para levantar un contenedor MongoDB real (`mongo:7.0`) vía `MongoTestcontainersConfiguration` (`@Bean @ServiceConnection MongoDBContainer`) — no hay configuración estática de `spring.data.mongodb.*` en `src/test/resources/application.yml`, la URI se inyecta dinámicamente. El resto de las pruebas (unitarias y BDD) no tocan Mongo en absoluto: mockean los puertos de salida directamente.
+Solo el smoke test (`PaymentApplicationTests`) toca la base de datos. Usa Testcontainers para levantar un contenedor PostgreSQL real vía `@ServiceConnection` — no hay configuración estática de `spring.datasource.*` en `src/test/resources/application.yml`, la URI se inyecta dinámicamente. El resto de las pruebas (unitarias y BDD) no tocan la base de datos: mockean los puertos de salida directamente.
 
 ## Ejecución
 
@@ -86,7 +86,7 @@ Solo el smoke test (`PaymentApplicationTests`) toca la base de datos. Usa Testco
 
 | Clase | Descripción |
 |-------|-------------|
-| `PaymentApplicationTests` | Verifica que el contexto de Spring Boot carga correctamente (Spring Data MongoDB contra un contenedor Testcontainers) |
+| `PaymentApplicationTests` | Verifica que el contexto de Spring Boot carga correctamente (Spring Data JPA contra un contenedor Testcontainers) |
 
 ## Buenas prácticas de este proyecto
 

@@ -6,7 +6,7 @@
 |---------|------------|
 | **Hexagonal Architecture** | Patrón que separa la lógica de negocio de los adaptadores de entrada y salida |
 | **Port** | Interfaz que define un contrato entre el dominio y el exterior |
-| **Adapter** | Implementación concreta de un puerto (HTTP, MongoDB, etc.) |
+| **Adapter** | Implementación concreta de un puerto (HTTP, PostgreSQL, etc.) |
 | **DTO** | Objeto de transferencia de datos entre capas o servicios |
 | **Use Case** | Caso de uso que encapsula una operación de negocio |
 | **PSE** | Pagos Seguros en Línea — único método de pago que soporta este servicio |
@@ -17,7 +17,7 @@
 ## Referencias
 
 - [Spring Boot Documentation](https://docs.spring.io/spring-boot/docs/current/reference/html/)
-- [Spring Data MongoDB](https://docs.spring.io/spring-data/mongodb/docs/current/reference/html/)
+- [Spring Data JPA](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/)
 - [Testcontainers](https://testcontainers.com/)
 - [Mercado Pago — API de Pagos](https://www.mercadopago.com.co/developers/es/reference/payments/_payments/post)
 - [Mercado Pago — Métodos de pago](https://www.mercadopago.com.co/developers/es/reference/payment_methods/_payment_methods/get)
@@ -61,4 +61,3 @@ Los estilos personalizados se definen en `docs/assets/stylesheets/extra.css`:
 |---------|-------|-------------|
 | 0.1.0 | 2026-07-13 | Scaffolding inicial del servicio y documentación MkDocs |
 | 0.2.0 | 2026-07-13 | Implementación completa: dominio `PaymentOrder`, los 7 casos de uso PSE, persistencia PostgreSQL/JPA con optimistic locking, integración con Mercado Pago, Swagger UI, CI/CD (GitHub Actions + Docker), 58 pruebas (unitarias + BDD). Documentación actualizada para reflejar la implementación real. |
-| 0.3.0 | 2026-07-14 | Migración de persistencia de PostgreSQL/JPA/Flyway a MongoDB/Spring Data MongoDB: índices declarados por anotación (sin migraciones), pruebas de contexto contra un contenedor Testcontainers real en vez de H2. |

@@ -6,7 +6,7 @@
 |-------------|----------------|
 | JDK | 21 |
 | Maven | 3.9 (o usar `./mvnw`, ya incluido) |
-| MongoDB | 7.0 (local vía `docker-compose.yml`) |
+| PostgreSQL | 16 (local vía `docker-compose.yml`) |
 | Python (MkDocs) | 3.10+ |
 
 ## Perfiles de Spring
@@ -26,9 +26,11 @@ Se activa con `SPRING_PROFILES_ACTIVE` (por defecto `dev` si no se define, ver `
 
 | Variable | Descripción | Valor por defecto (perfil `dev`) |
 |----------|-------------|-----------------------------------|
-| `SPRING_DATA_MONGODB_URI` | URI de conexión a MongoDB | `mongodb://techcup:techcup@localhost:27017/techcup_payments?authSource=admin` |
+| `SPRING_DATASOURCE_URL` | URL de conexión a PostgreSQL | `jdbc:postgresql://localhost:5432/techcup_payments` |
+| `SPRING_DATASOURCE_USERNAME` | Usuario de PostgreSQL | `techcup` |
+| `SPRING_DATASOURCE_PASSWORD` | Contraseña de PostgreSQL | `techcup` |
 
-En `prod` esta variable es **obligatoria**, sin valor por defecto — el servicio no arranca sin ella.
+En `prod` estas variables son **obligatorias**, sin valores por defecto — el servicio no arranca sin ellas.
 
 ### Mercado Pago
 
@@ -54,10 +56,17 @@ spring:
     name: payment
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  data:
-    mongodb:
-      uuid-representation: standard
-      auto-index-creation: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/techcup_payments
+    username: techcup
+    password: techcup
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
 
 mercadopago:
   base-url: https://api.mercadopago.com
@@ -69,9 +78,10 @@ mercadopago:
 
 ```yaml
 spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://techcup:techcup@localhost:27017/techcup_payments?authSource=admin}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/techcup_payments}
+    username: ${SPRING_DATASOURCE_USERNAME:techcup}
+    password: ${SPRING_DATASOURCE_PASSWORD:techcup}
 
 mercadopago:
   access-token: ${MP_ACCESS_TOKEN_DEV}
@@ -84,10 +94,10 @@ mercadopago:
 ## Base de datos local con Docker
 
 ```bash
-docker compose up -d mongodb
+docker compose up -d postgres
 ```
 
-Levanta MongoDB 7.0 con la base `techcup_payments` y usuario root `techcup`/`techcup` (coincide con los defaults de `application-dev.yml`). No hay migraciones que aplicar: los índices (únicos en `enrollmentId`/`idempotencyKey`, compuesto en `status`/`expiresAt`) se declaran por anotación en `PaymentOrderDocument` y se crean automáticamente al arrancar (`spring.data.mongodb.auto-index-creation: true`).
+Levanta PostgreSQL 16 con la base `techcup_payments` y usuario `techcup`/`techcup` (coincide con los defaults de `application-dev.yml`). El esquema se gestiona automáticamente por Flyway al arrancar el servicio — las migraciones están en `src/main/resources/db/migration/`.
 
 ## Ejecución local
 
@@ -103,7 +113,7 @@ Levanta MongoDB 7.0 con la base `techcup_payments` y usuario root `techcup`/`tec
 ./mvnw test
 ```
 
-Las pruebas requieren Docker disponible: Testcontainers levanta un contenedor MongoDB real (`mongo:7.0`) automáticamente para el smoke test de contexto (`PaymentApplicationTests`), sin configuración estática — la URI se inyecta en tiempo de ejecución vía `@ServiceConnection`.
+Las pruebas requieren Docker disponible: Testcontainers levanta un contenedor PostgreSQL real automáticamente para el smoke test de contexto (`PaymentApplicationTests`), sin configuración estática — la URI se inyecta en tiempo de ejecución vía `@ServiceConnection`. El resto de las pruebas (unitarias y BDD) no tocan la base de datos: mockean los puertos de salida directamente.
 
 ### Generar JAR
 
@@ -151,6 +161,7 @@ El sitio estático se genera en la carpeta `site/` — **no se sube a git** (est
 ```
 mk-payment-service/
 ├── mkdocs.yml
+├── requirements.txt
 ├── docker-compose.yml
 ├── Dockerfile
 ├── docs/
@@ -160,6 +171,7 @@ mk-payment-service/
 │           └── extra.css
 ├── .github/workflows/
 │   ├── ci-push.yml
+│   ├── docs-pages.yml
 │   ├── pr-master.yml
 │   └── pr-qa.yml
 ├── pom.xml
@@ -169,7 +181,8 @@ mk-payment-service/
     │   └── resources/
     │       ├── application.yml
     │       ├── application-dev.yml
-    │       └── application-prod.yml
+    │       ├── application-prod.yml
+    │       └── db/migration/
     └── test/
         ├── java/
         └── resources/

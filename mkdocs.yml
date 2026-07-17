@@ -109,11 +109,11 @@ markdown_extensions:
 # Navigation
 nav:
   - Home: index.md
-  - Introduction: introduccion.md
-  - Requirements: requerimientos.md
-  - Configuration: configuracion.md
-  - Architecture: arquitectura.md
+  - Introduction: introduction.md
+  - Requirements: requirements.md
+  - Configuration: configuration.md
+  - Architecture: architecture.md
   - API: api.md
-  - Testing: pruebas.md
-  - Team: equipo.md
-  - Appendices: anexos.md
+  - Testing: testing.md
+  - Team: team.md
+  - Appendices: appendices.md
