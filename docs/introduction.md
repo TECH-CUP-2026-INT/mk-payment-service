@@ -2,7 +2,7 @@
 
 ## Context
 
-The **Payment Service** (`mk-payment-service`) is part of the **Astro Merge** ecosystem of TECH-CUP 2026. It processes tournament enrollment payments for TechCup Football via **Mercado Pago**, exclusively using **PSE** (Pagos Seguros en Línea) as the payment method.
+The **Payment Service** (`mk-payment-service`) is part of the **Mortal Kodebat** ecosystem of TECH-CUP 2026. It processes tournament enrollment payments for TechCup Football via **Mercado Pago**, exclusively using **PSE** (Pagos Seguros en Línea) as the payment method.
 
 `mk-tournament-service` is the only consumer of this service: it creates a payment order when a captain registers their team, and queries its status to decide whether to confirm or release the slot.
 

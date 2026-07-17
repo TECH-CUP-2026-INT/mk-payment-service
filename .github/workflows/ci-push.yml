@@ -137,3 +137,19 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           images: ghcr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Reiniciar App Service para forzar el pull de la imagen nueva
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          set -euo pipefail
+          read -r username password scm_host <<< "$(python3 -c '
+          import os, xml.etree.ElementTree as ET
+          root = ET.fromstring(os.environ["PUBLISH_PROFILE"])
+          profile = next(p for p in root.findall("publishProfile") if p.get("publishMethod") == "MSDeploy")
+          host = profile.get("publishUrl").split(":")[0]
+          print(profile.get("userName"), profile.get("userPWD"), host)
+          ')"
+          curl -sf -X POST \
+            -u "${username}:${password}" \
+            "https://${scm_host}/api/app/restart"

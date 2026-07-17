@@ -1,6 +1,6 @@
 # Payment Service
 
-Welcome to the technical documentation of the **payment microservice** of the **Astro Merge** system, developed by the **TECH-CUP 2026 INT** team.
+Welcome to the technical documentation of the **payment microservice** of the **Mortal Kodebat** system, developed by the **TECH-CUP 2026 INT** team.
 
 It processes tournament enrollment payments through **Mercado Pago**, exclusively using **PSE** (Pagos Seguros en Línea / Online Secure Payments), and exposes the REST contract already consumed by `mk-tournament-service`.
 
