@@ -5,8 +5,10 @@ import co.edu.escuelaing.techcup.payment.exception.DuplicateEnrollmentOrderExcep
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
+import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodLimitsRepositoryPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
+import co.edu.escuelaing.techcup.payment.service.ports.PreferenceResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,14 +33,18 @@ class CreatePaymentOrderServiceTest {
 
     private PaymentOrderRepositoryPort paymentOrderRepository;
     private PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository;
+    private PaymentGatewayPort paymentGateway;
     private CreatePaymentOrderService service;
 
     @BeforeEach
     void setUp() {
         paymentOrderRepository = mock(PaymentOrderRepositoryPort.class);
         paymentMethodLimitsRepository = mock(PaymentMethodLimitsRepositoryPort.class);
-        service = new CreatePaymentOrderService(paymentOrderRepository, paymentMethodLimitsRepository);
+        paymentGateway = mock(PaymentGatewayPort.class);
+        service = new CreatePaymentOrderService(paymentOrderRepository, paymentMethodLimitsRepository, paymentGateway);
         when(paymentOrderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentGateway.createPreference(any(), any(), any(), any(), any()))
+                .thenReturn(new PreferenceResult("pref-test-123", "https://mercadopago.com/init"));
     }
 
     @Nested

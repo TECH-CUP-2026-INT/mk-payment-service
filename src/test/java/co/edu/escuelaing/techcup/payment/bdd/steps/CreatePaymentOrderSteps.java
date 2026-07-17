@@ -6,8 +6,10 @@ import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import co.edu.escuelaing.techcup.payment.service.impl.CreatePaymentOrderService;
+import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodLimitsRepositoryPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
+import co.edu.escuelaing.techcup.payment.service.ports.PreferenceResult;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -32,6 +34,7 @@ public class CreatePaymentOrderSteps {
 
     private PaymentOrderRepositoryPort paymentOrderRepository;
     private PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository;
+    private PaymentGatewayPort paymentGateway;
     private CreatePaymentOrderService service;
     private PaymentOrder createdOrder;
     private Exception thrownException;
@@ -40,10 +43,13 @@ public class CreatePaymentOrderSteps {
     public void setUp() {
         paymentOrderRepository = mock(PaymentOrderRepositoryPort.class);
         paymentMethodLimitsRepository = mock(PaymentMethodLimitsRepositoryPort.class);
-        service = new CreatePaymentOrderService(paymentOrderRepository, paymentMethodLimitsRepository);
+        paymentGateway = mock(PaymentGatewayPort.class);
+        service = new CreatePaymentOrderService(paymentOrderRepository, paymentMethodLimitsRepository, paymentGateway);
         createdOrder = null;
         thrownException = null;
         when(paymentOrderRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentGateway.createPreference(any(), any(), any(), any(), any()))
+                .thenReturn(new PreferenceResult("pref-cucumber", "https://mercadopago.com/init"));
     }
 
     @Given("los límites de PSE son un monto mínimo de {string} y máximo de {string}")
