@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-api-config
+  namespace: payments
+data:
+  spring.profiles.active: ${SPRING_PROFILES_ACTIVE}
+  payment-order.expiration-minutes: "60"
+  mercadopago.base-url: "https://api.mercadopago.com"
+  mercadopago.connect-timeout-millis: "3000"
+  mercadopago.read-timeout-millis: "5000"

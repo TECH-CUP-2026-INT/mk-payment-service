@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base/namespace.yaml
+  - ../../base/service-account.yaml
+  - ../../base/configmap.yaml
+  - ../../base/secret-provider-class.yaml
+  - ../../base/deployment.yaml
+  - ../../base/service.yaml
+  - ../../base/hpa.yaml
+  - ../../base/pdb.yaml
+  - ../../base/service-monitor.yaml
+  - ../../base/pod-monitor.yaml
+  - ../../base/ingress.yaml
+
+namespace: payments
+
+commonLabels:
+  environment: qa
+
+configMapGenerator:
+  - name: payments-api-config
+    behavior: merge
+    literals:
+      - spring.profiles.active=qa
+
+secretGenerator:
+  - name: payments-api-secrets
+    behavior: replace
+    literals:
+      - spring.datasource.url=
+      - spring.datasource.username=
+      - spring.datasource.password=
+      - mercadopago.access-token=
+      - mercadopago.public-key=
+      - mercadopago.notification-url=
+      - mercadopago.callback-url=
+
+patches:
+  - target:
+      kind: Deployment
+      name: payments-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 768Mi

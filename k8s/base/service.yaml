@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+  namespace: payments
+  labels:
+    app: payments-api
+    app.kubernetes.io/part-of: techcup
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  selector:
+    app: payments-api
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
