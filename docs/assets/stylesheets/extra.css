@@ -1,37 +1,496 @@
+/* ==========================================================================
+   TECH CUP 2026 — Documentación
+   Tema aplicado según el Manual de Identidad (TechCup_BrandGuide_v18)
+   Tipografía: Oswald (títulos) · Inter (cuerpo, vía theme.font) ·
+               JetBrains Mono (código, vía theme.font) · Archivo Black (display)
+   Color: dorado #F5A623 = logro/acción (CTAs, iconos, acentos cortos —
+          nunca texto largo). Morado #7C3AED = diferenciación/foco/navegación.
+          Fondo #160B24 ("purple-black" del manual) = modo oscuro principal,
+          más cálido que el negro puro para que combine con los acentos.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Archivo+Black&display=swap');
+
+:root,
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color:        #6a1b9a; /* morado */
-  --md-primary-fg-color--light: #8e24aa;
-  --md-primary-fg-color--dark:  #4a148c;
-  --md-primary-bg-color:        #ffffff;
-  --md-primary-bg-color--light: #ffffffb3;
+  /* Modo claro — alternativo. Mismos acentos de marca sobre base lavanda. */
+  --md-primary-fg-color: #4C1D95;
+  --md-primary-fg-color--light: #7C3AED;
+  --md-primary-fg-color--dark: #3B1264;
+  --md-primary-bg-color: #FFFFFF;
+  --md-primary-bg-color--light: #FFFFFFCC;
 
-  --md-accent-fg-color:         #c9a227; /* dorado */
-  --md-accent-fg-color--transparent: #c9a2271a;
+  --md-accent-fg-color: #F5A623;
+  --md-accent-fg-color--transparent: #F5A6231A;
+  --md-accent-bg-color: #1C1830;
+  --md-accent-bg-color--light: #1C1830CC;
+
+  /* En claro el dorado no es apto para texto (falla AA sobre blanco/lavanda):
+     los enlaces usan morado, tal como indica el manual ("Enlaces, foco"). */
+  --md-typeset-a-color: #7C3AED;
+
+  --md-default-bg-color: #F4F2FA;
+  --md-default-fg-color: #1C1830;
+  --md-default-fg-color--light: #6E6880;
+  --md-default-fg-color--lighter: #6E688073;
+  --md-default-fg-color--lightest: #6E68801f;
+
+  --md-code-bg-color: #EEEAF9;
+  --md-code-fg-color: #1C1830;
+
+  --tc-surface: #FFFFFF;
+  --tc-surface-2: #EEEAF9;
+  --tc-border: #E0D7F7;
+  --tc-live: #FAEACB;
+  --tc-finished: #E0D7F7;
+
+  --md-mermaid-font-family: 'Inter', sans-serif;
+  --md-mermaid-edge-color: #7C3AED;
+  --md-mermaid-node-bg-color: #EEEAF9;
+  --md-mermaid-node-fg-color: #1C1830;
+  --md-mermaid-label-bg-color: #FFFFFF;
+  --md-mermaid-label-fg-color: #1C1830;
 }
 
-/* Modo oscuro */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:        #7b1fa2; /* morado */
-  --md-primary-fg-color--light: #ab47bc;
-  --md-primary-fg-color--dark:  #4a148c;
+  /* Modo oscuro — principal. Fondo "purple-black", más cálido que el negro puro. */
+  --md-primary-fg-color: #4C1D95;
+  --md-primary-fg-color--light: #7C3AED;
+  --md-primary-fg-color--dark: #3B1264;
+  --md-primary-bg-color: #FFFFFF;
 
-  --md-accent-fg-color:         #d4af37; /* dorado */
-  --md-accent-fg-color--transparent: #d4af371a;
+  --md-accent-fg-color: #F5A623;
+  --md-accent-fg-color--transparent: #F5A6231A;
+
+  --md-typeset-a-color: #F5A623;
+
+  --md-default-bg-color: #160B24;
+  --md-default-fg-color: #E5E7EB;
+  --md-default-fg-color--light: #9B98A8;
+  --md-default-fg-color--lighter: #9B98A880;
+  --md-default-fg-color--lightest: #9B98A81f;
+
+  --md-code-bg-color: #1F1F28;
+  --md-code-fg-color: #E5E7EB;
+
+  --tc-surface: #1F1F28;
+  --tc-surface-2: #262633;
+  --tc-border: #F5A6231A;
+  --tc-hero: #160B24;
+
+  --md-mermaid-font-family: 'Inter', sans-serif;
+  --md-mermaid-edge-color: #F5A623;
+  --md-mermaid-node-bg-color: #1F1F28;
+  --md-mermaid-node-fg-color: #E5E7EB;
+  --md-mermaid-label-bg-color: #262633;
+  --md-mermaid-label-fg-color: #E5E7EB;
 }
 
-/* Enlaces destacados con el dorado en hover */
+/* Footer: color fijo de marca (footer-purple), igual en ambos temas. */
+.md-footer {
+  background-color: #4E2A87;
+}
+.md-footer-meta {
+  background-color: #3B1264;
+}
+
+/* ---- Tipografía ---------------------------------------------------- */
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6,
+.md-header__topic,
+.md-nav__title,
+.md-tabs__link {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: .01em;
+  position: relative;
+  padding-bottom: 16px;
+  margin-bottom: 28px;
+}
+
+.md-typeset h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--md-accent-fg-color), var(--md-primary-fg-color--light));
+}
+
+.md-typeset h2 {
+  border-left: 4px solid var(--md-accent-fg-color);
+  padding-left: 12px;
+  margin-top: 2.2em;
+}
+
+.md-typeset h3 {
+  color: var(--md-primary-fg-color--light);
+}
+
+/* ---- Enlaces --------------------------------------------------------- */
+
+.md-typeset a {
+  color: var(--md-typeset-a-color);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
 .md-typeset a:hover {
+  color: var(--md-primary-fg-color--light);
+}
+
+[data-md-color-scheme="slate"] .md-typeset a:hover {
+  color: #FFFFFF;
+}
+
+/* ---- Navegación: la marca reserva el morado para foco/selección ------ */
+
+.md-tabs__link--active,
+.md-nav__link--active {
+  color: var(--md-primary-fg-color--light) !important;
+  font-weight: 600;
+}
+
+.md-nav__link:focus,
+.md-nav__link:hover {
   color: var(--md-accent-fg-color);
 }
 
-/* Botón principal (index) en dorado sobre morado */
+/* ---- Botones (.md-button) — el dorado como CTA de "logro" ------------- */
+
+.md-typeset .md-button {
+  border-radius: 50px;
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  font-size: .68rem;
+  padding: .5em 1.4em;
+}
+
+.md-typeset .md-button:hover {
+  background-color: var(--md-accent-fg-color);
+  color: #1C1830;
+  border-color: var(--md-accent-fg-color);
+}
+
 .md-typeset .md-button--primary {
   background-color: var(--md-accent-fg-color);
   border-color: var(--md-accent-fg-color);
-  color: #2e1437;
+  color: #1C1830;
 }
+
 .md-typeset .md-button--primary:hover {
   background-color: var(--md-primary-fg-color--light);
   border-color: var(--md-primary-fg-color--light);
-  color: #ffffff;
+  color: #FFFFFF;
+}
+
+/* ---- Tablas ------------------------------------------------------------ */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--tc-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--md-primary-fg-color);
+  color: #FFFFFF;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+/* ---- Bloques de código -------------------------------------------------- */
+
+.md-typeset pre > code,
+.md-typeset .highlight {
+  border-radius: 10px;
+}
+
+.md-typeset code {
+  background-color: var(--md-code-bg-color);
+  border-radius: 4px;
+}
+
+.md-clipboard {
+  color: var(--md-accent-fg-color);
+}
+
+/* ---- Admonitions: mapeadas a los tokens semánticos del manual ---------- */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 10px;
+  border-width: 1px;
+}
+
+.md-typeset .note,
+.md-typeset .info {
+  border-color: var(--md-primary-fg-color--light);
+}
+.md-typeset .note > .admonition-title,
+.md-typeset .info > .admonition-title {
+  background-color: rgba(124, 58, 237, .1);
+}
+.md-typeset .note > .admonition-title::before,
+.md-typeset .info > .admonition-title::before {
+  background-color: var(--md-primary-fg-color--light);
+}
+
+.md-typeset .warning,
+.md-typeset .caution {
+  border-color: var(--md-accent-fg-color);
+}
+.md-typeset .warning > .admonition-title,
+.md-typeset .caution > .admonition-title {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .caution > .admonition-title::before {
+  background-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .danger,
+.md-typeset .failure {
+  border-color: #EF4444;
+}
+
+.md-typeset .tip,
+.md-typeset .success {
+  border-color: #0D9488;
+}
+
+/* ---- Mermaid: fondo de diagrama coherente con la superficie del tema --- */
+
+.md-typeset .mermaid {
+  background-color: var(--tc-surface);
+  border: 1px solid var(--tc-border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+/* ---- Selección de texto con el acento dorado --------------------------- */
+
+.md-typeset ::selection {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+/* ---- Logo del header: leve resalte dorado al pasar el mouse ----------- */
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem;
+  width: 1.6rem;
+  transition: filter .2s;
+}
+
+.md-header__button.md-logo:hover img {
+  filter: drop-shadow(0 0 6px rgba(245, 166, 35, .55));
+}
+
+/* ---- Hero de portada — mismo degradé "estadio nocturno" del manual ----- */
+
+.tc-hero {
+  background: linear-gradient(140deg, #160B24 0%, #2E1450 55%, #3B1264 100%);
+  border-radius: 18px;
+  padding: 56px 24px 46px;
+  text-align: center;
+  margin: 0 0 40px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.tc-hero::before {
+  content: '';
+  position: absolute;
+  right: -90px;
+  bottom: -90px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 166, 35, .12);
+  z-index: -1;
+}
+
+.tc-hero::after {
+  content: '';
+  position: absolute;
+  left: -70px;
+  top: -70px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 58, 237, .18);
+  z-index: -1;
+}
+
+.tc-hero-logo {
+  width: 104px;
+  height: auto;
+  margin-bottom: 22px;
+  filter: drop-shadow(0 6px 22px rgba(245, 166, 35, .3));
+}
+
+.tc-hero-eyebrow {
+  font-size: 11px;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: #F5A623;
+  margin: 0 0 18px;
+}
+
+.md-typeset h1.tc-hero-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-weight: 400;
+  font-size: clamp(30px, 5.5vw, 52px);
+  line-height: 1;
+  color: #fff;
+  text-align: center;
+  padding-bottom: 0;
+  margin: 0 0 18px;
+}
+
+.md-typeset h1.tc-hero-title::after {
+  content: none;
+}
+
+.tc-hero-title span {
+  color: #F5A623;
+}
+
+.tc-hero-sub {
+  font-family: 'Inter', sans-serif;
+  font-style: italic;
+  color: #9B98A8;
+  font-size: 15px;
+  margin: 0;
+}
+
+/* ---- Badges de dominio (cc- / mk- / am- / ga-) ------------------------- */
+
+.tc-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+
+/* cc- Identidad y Usuarios -> dorado (texto oscuro: el dorado no pasa AA con texto claro) */
+.tc-badge-cc { background-color: #F5A623; color: #1C1830; }
+/* mk- Torneos y Pagos -> verde (ingeniería de sistemas, paleta de carreras) */
+.tc-badge-mk { background-color: #004B19; color: #FFFFFF; }
+/* am- Partidos y Logística -> morado de marca */
+.tc-badge-am { background-color: #4C1D95; color: #FFFFFF; }
+/* ga- Analítica y Auditoría -> azul (matemáticas, paleta de carreras) */
+.tc-badge-ga { background-color: #003366; color: #FFFFFF; }
+
+.md-typeset h3 .tc-badge {
+  font-size: 11px;
+  margin-right: 10px;
+}
+
+/* ==========================================================================
+   Modo oscuro — más profundidad y carácter ("estadio nocturno")
+   ========================================================================== */
+
+.md-header,
+.md-tabs {
+  background: linear-gradient(120deg, var(--md-primary-fg-color--dark), var(--md-primary-fg-color) 75%);
+}
+
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background: linear-gradient(120deg, #160B24 0%, #3B1264 55%, #4C1D95 100%);
+}
+
+.md-header {
+  box-shadow: 0 1px 0 0 rgba(245, 166, 35, .3), 0 2px 16px rgba(0, 0, 0, .2);
+}
+
+/* Glow sutil detrás del contenido, como reflectores de estadio */
+[data-md-color-scheme="slate"] .md-container {
+  background-image:
+    radial-gradient(ellipse 900px 480px at 8% -8%, rgba(124, 58, 237, .10), transparent 60%),
+    radial-gradient(ellipse 800px 460px at 100% 8%, rgba(245, 166, 35, .06), transparent 55%);
+  background-repeat: no-repeat;
+}
+
+/* Separación sutil de la barra lateral respecto al contenido */
+[data-md-color-scheme="slate"] .md-sidebar__scrollwrap {
+  border-right: 1px solid rgba(245, 166, 35, .06);
+}
+
+[data-md-color-scheme="slate"] .md-nav__link {
+  border-radius: 6px;
+  transition: background-color .15s, color .15s;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  background-color: rgba(245, 166, 35, .08);
+}
+
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  background-color: rgba(124, 58, 237, .16);
+}
+
+/* Más profundidad en tarjetas de contenido sobre el fondo negro */
+[data-md-color-scheme="slate"] .md-typeset .admonition,
+[data-md-color-scheme="slate"] .md-typeset details,
+[data-md-color-scheme="slate"] .md-typeset pre,
+[data-md-color-scheme="slate"] .md-typeset table:not([class]),
+[data-md-color-scheme="slate"] .md-typeset .mermaid {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .35);
+}
+
+[data-md-color-scheme="slate"] .md-search__form {
+  background-color: rgba(255, 255, 255, .08);
+}
+
+[data-md-color-scheme="slate"] .md-search__form:hover {
+  background-color: rgba(255, 255, 255, .14);
+}
+
+/* Scrollbar a medida */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--md-accent-fg-color--transparent);
 }
