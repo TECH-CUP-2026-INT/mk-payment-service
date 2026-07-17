@@ -4,14 +4,10 @@
 
 | Role | Name | Responsibility |
 |------|------|----------------|
-| Architect | _To be defined_ | Architecture design and standards |
-| Tech Lead | _To be defined_ | Technical leadership and code review |
-| Backend Developer | _To be defined_ | Microservice implementation |
-| QA | _To be defined_ | Test strategy and execution |
-| DevOps | _To be defined_ | CI/CD and deployment |
-
-!!! tip "Update this section"
-    Fill in the names and roles as team members are assigned to the project.
+| Architect | Hernán Sánchez | Architecture design and standards |
+| Tech Lead | Hever Barrera | Technical leadership and code review |
+| Backend Developer | Nicolás Prieto | Microservice implementation |
+| QA | Mabel Bernal | Test strategy and execution |
 
 ## Communication Channels
 

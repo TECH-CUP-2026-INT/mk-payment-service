@@ -22,6 +22,20 @@ Activated via `SPRING_PROFILES_ACTIVE` (defaults to `dev` if not set, see `appli
 
 ## Environment Variables
 
+Configuration follows the [12-factor](https://12factor.net/config) principle of externalized config: no credential or environment-specific value is hardcoded in the source or in the `.yml` files. Every one of them is resolved from an environment variable using Spring's `${VAR:default}` placeholder syntax in `application-dev.yml` / `application-prod.yml`.
+
+- In `dev`, most variables have a working fallback (sandbox-friendly defaults), so the service can start with minimal setup.
+- In `prod`, the same placeholders have **no default** (`${VAR}` with nothing after the colon) — a missing variable makes the service fail fast at startup instead of silently falling back to a `dev` value.
+
+| Variable | Applies to | Purpose |
+|----------|-----------|---------|
+| `SPRING_PROFILES_ACTIVE` | all | Selects the active Spring profile (`dev` or `prod`); defaults to `dev` |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | all | PostgreSQL connection |
+| `MP_ACCESS_TOKEN_DEV` / `MP_PUBLIC_KEY_DEV` | `dev` | Mercado Pago sandbox credentials |
+| `MP_ACCESS_TOKEN_PROD` / `MP_PUBLIC_KEY_PROD` | `prod` | Mercado Pago real credentials |
+| `MP_NOTIFICATION_URL_DEV` / `MP_NOTIFICATION_URL_PROD` | `dev` / `prod` | Webhook URL Mercado Pago calls on **this backend** |
+| `MP_CALLBACK_URL_DEV` / `MP_CALLBACK_URL_PROD` | `dev` / `prod` | URL Mercado Pago redirects the payer to on the **frontend**, after bank authentication |
+
 ### Database
 
 | Variable | Description | Default Value (profile `dev`) |
@@ -40,6 +54,8 @@ In `prod`, these variables are **mandatory** with no defaults — the service wi
 | `MP_ACCESS_TOKEN_PROD` / `MP_PUBLIC_KEY_PROD` | Real credentials | `prod` |
 | `MP_NOTIFICATION_URL_DEV` | Public URL (HTTPS) where Mercado Pago delivers webhook notifications | `dev` |
 | `MP_NOTIFICATION_URL_PROD` | Same, for production | `prod` |
+| `MP_CALLBACK_URL_DEV` | Frontend URL Mercado Pago redirects the payer to after bank authentication | `dev` |
+| `MP_CALLBACK_URL_PROD` | Same, for production | `prod` |
 
 !!! warning "The webhook requires a public URL"
     Mercado Pago **cannot** call `localhost`. To test the webhook flow in development, expose the service with a tunnel (ngrok or similar) and set `MP_NOTIFICATION_URL_DEV` to that public URL — never leave it pointing to `localhost` in any real environment.
@@ -87,6 +103,7 @@ mercadopago:
   access-token: ${MP_ACCESS_TOKEN_DEV}
   public-key: ${MP_PUBLIC_KEY_DEV}
   notification-url: ${MP_NOTIFICATION_URL_DEV:https://REPLACE-WITH-YOUR-NGROK-URL.ngrok-free.app/payment-orders/webhook}
+  callback-url: ${MP_CALLBACK_URL_DEV:https://REPLACE-WITH-YOUR-FRONTEND-URL/checkout/pse-return}
 ```
 
 `application-prod.yml` has no default values — everything comes via environment variables.

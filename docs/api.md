@@ -1,5 +1,13 @@
 # API
 
+## Overview
+
+The service exposes a single **REST API** for two purposes: managing payment orders (create, submit PSE, query status) and querying PSE payment method limits — plus the inbound webhook Mercado Pago uses to notify payment results. There is no WebSocket or streaming interface; every interaction is a synchronous HTTP request/response.
+
+It is documented with **springdoc-openapi**: once the app is running, the interactive Swagger UI is available at `/swagger-ui.html` (raw spec at `/v3/api-docs`). Every endpoint below is described exactly as it appears there — same summaries, same request/response examples — just grouped by resource and written out in plain language.
+
+Endpoints are grouped into two resources, matching the OpenAPI tags: **Payment Orders** (`/payment-orders`) and **Payment Methods** (`/payment-methods`). None of them currently require authentication.
+
 ## General Information
 
 | Attribute | Value |

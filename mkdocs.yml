@@ -113,6 +113,7 @@ nav:
   - Requirements: requirements.md
   - Configuration: configuration.md
   - Architecture: architecture.md
+  - Service Integration: service-integration.md
   - API: api.md
   - Testing: testing.md
   - Team: team.md
