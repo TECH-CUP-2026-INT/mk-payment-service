@@ -7,6 +7,10 @@ on:
       - develop
       - "feature_**"
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   IMAGE_NAME: ${{ github.repository }}
   ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
@@ -88,6 +92,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -97,13 +102,15 @@ jobs:
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login en Azure Container Registry
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
+      - name: Login en Azure (OIDC)
+        uses: azure/login@v2
         with:
-          registry: ${{ env.ACR_REGISTRY }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login en Azure Container Registry
+        run: az acr login --name ${{ env.ACR_REGISTRY }}
 
       - name: Login en GitHub Container Registry
         uses: docker/login-action@v3
@@ -140,15 +147,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
     environment: qa
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Login en Azure
+      - name: Login en Azure (OIDC)
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS_QA }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Obtener credenciales AKS
         uses: azure/aks-set-context@v4
@@ -189,15 +201,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Login en Azure
+      - name: Login en Azure (OIDC)
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Obtener credenciales AKS
         uses: azure/aks-set-context@v4
