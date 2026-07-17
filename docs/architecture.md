@@ -116,6 +116,109 @@ Detailed view of components and their responsibilities:
 
 ![Detailed component diagram](assets/diagrams/Diagrama%20de%20componentes%20especificos.png)
 
+## Observability architecture
+
+The following diagram shows how the three pillars of observability — metrics, logs, and traces — are instrumented, collected, and visualized across the Azure and Kubernetes stack:
+
+```mermaid
+flowchart TB
+    subgraph azure["Azure Cloud"]
+        direction TB
+        subgraph monitor["Azure Monitor"]
+            AI["App Insights<br/>(traces, dependencies)"]
+            LA["Log Analytics<br/>(ContainerLogV2)"]
+        end
+        KV["Key Vault<br/>(secrets)"]
+    end
+
+    subgraph aks["AKS Cluster"]
+        direction TB
+        subgraph observability["Observability Namespace"]
+            PROM["Prometheus<br/>(kube-prometheus-stack)"]
+            GRAFANA["Grafana<br/>(dashboards)"]
+        end
+
+        subgraph payments_ns["payments Namespace"]
+            INGRESS["NGINX Ingress"]
+            API["payments-api<br/>(Spring Boot)"]
+            OTEL["OTEL Collector"]
+        end
+
+        subgraph infra_ns["monitoring Namespace"]
+            NODE_EXP["Node Exporter"]
+            KSM["kube-state-metrics"]
+        end
+    end
+
+    subgraph external["External"]
+        USER["User / Frontend"]
+        MP["Mercado Pago API"]
+        DB[("PostgreSQL<br/>Azure DB")]
+    end
+
+    USER -->|"HTTP"| INGRESS
+    INGRESS --> API
+
+    API -->|"SQL"| DB
+    API -->|"REST"| MP
+
+    API -->|"stdout JSON"| LA
+    API -->|"OTLP (traces/metrics/logs)"| OTEL
+    API -->|"/actuator/prometheus"| PROM
+
+    OTEL -->|"App Insights export"| AI
+
+    PROM -->|"data source"| GRAFANA
+    LA -->|"data source (KQL)"| GRAFANA
+    AI -->|"data source"| GRAFANA
+
+    NODE_EXP -->|"node metrics"| PROM
+    KSM -->|"cluster metrics"| PROM
+
+    KV -.->|"CSI Secrets Store<br/>Workload Identity"| API
+
+    style API fill:#6db33f,color:#fff
+    style OTEL fill:#f5a800,color:#000
+    style PROM fill:#e6522c,color:#fff
+    style GRAFANA fill:#f46800,color:#fff
+    style AI fill:#0078d4,color:#fff
+    style LA fill:#0078d4,color:#fff
+    style KV fill:#0078d4,color:#fff
+```
+
+### Observability layers
+
+| Layer | Tool | Endpoint / Source | Destination |
+|---|---|---|---|
+| **Metrics** | Micrometer → Prometheus | `GET /actuator/prometheus` | Prometheus → Grafana dashboards |
+| **Logs** | Logback JSON (Logstash encoder) | stdout (structured JSON) | Container Insights → Log Analytics (`ContainerLogV2`) |
+| **Traces** | OpenTelemetry (auto-instrument) | OTLP → OTEL Collector (`:4318`) | App Insights |
+| **Secrets** | CSI Secrets Store + Workload Identity | Azure Key Vault | K8s Secret → env vars |
+| **Infra metrics** | Node Exporter + kube-state-metrics | kubelet / API server | Prometheus → Grafana |
+
+### Key configuration
+
+**Spring Boot** (`application.yml`):
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${SERVICE_NAME}
+      environment: ${ENVIRONMENT}
+```
+
+**Logback** (`logback-spring.xml`): writes structured JSON with `service.name`, `deployment.environment`, `trace.id`, `span.id` to stdout.
+
+**OTEL Collector**: receives OTLP data from the app on port 4318, exports to Azure Application Insights.
+
+**Prometheus**: scrapes `/actuator/prometheus` every 30s via ServiceMonitor.
+
+**Grafana**: pre-configured with Prometheus data source. Additional data sources for Log Analytics and App Insights can be added.
+
 ## Diagrams
 
 Sequence diagrams for each REST use case:
