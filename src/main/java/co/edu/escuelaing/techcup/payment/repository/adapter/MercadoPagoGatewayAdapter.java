@@ -6,6 +6,7 @@ import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
+import co.edu.escuelaing.techcup.payment.service.ports.PreferenceResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
@@ -56,6 +57,29 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
         this.restClient = restClient;
         this.accessToken = accessToken;
+    }
+
+    @Override
+    public PreferenceResult createPreference(String idempotencyKey, String description, BigDecimal amount,
+            String notificationUrl, String callbackUrl) {
+        try {
+            PreferenceApiResponse response = restClient.post()
+                    .uri("/checkout/preferences")
+                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
+                    .header("X-Idempotency-Key", idempotencyKey)
+                    .body(new CreatePreferenceApiRequest(
+                            new PreferenceItemApiRequest(description, 1, amount),
+                            notificationUrl, callbackUrl))
+                    .retrieve()
+                    .body(PreferenceApiResponse.class);
+            if (response == null) {
+                throw new IllegalStateException("Respuesta vacia de Mercado Pago al crear preferencia");
+            }
+            return new PreferenceResult(response.id(), response.initPoint());
+        } catch (Exception ex) {
+            log.error("Error al crear preferencia en Mercado Pago", ex);
+            throw new PaymentGatewayException("No se pudo crear la preferencia en Mercado Pago", ex);
+        }
     }
 
     @Override
@@ -195,5 +219,29 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             String status,
             @JsonProperty("min_allowed_amount") BigDecimal minAllowedAmount,
             @JsonProperty("max_allowed_amount") BigDecimal maxAllowedAmount) {
+    }
+
+    private record CreatePreferenceApiRequest(
+            @JsonProperty("items") List<PreferenceItemApiRequest> items,
+            @JsonProperty("notification_url") String notificationUrl,
+            @JsonProperty("back_urls") BackUrlsApiRequest backUrls) {
+        CreatePreferenceApiRequest(PreferenceItemApiRequest item, String notificationUrl, String callbackUrl) {
+            this(List.of(item), notificationUrl, new BackUrlsApiRequest(callbackUrl));
+        }
+    }
+
+    private record PreferenceItemApiRequest(
+            String title,
+            int quantity,
+            @JsonProperty("unit_price") BigDecimal unitPrice) {
+    }
+
+    private record BackUrlsApiRequest(
+            @JsonProperty("success") String success) {
+    }
+
+    private record PreferenceApiResponse(
+            String id,
+            @JsonProperty("init_point") String initPoint) {
     }
 }

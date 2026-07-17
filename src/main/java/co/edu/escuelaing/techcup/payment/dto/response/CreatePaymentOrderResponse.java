@@ -14,6 +14,10 @@ public record CreatePaymentOrderResponse(
         @Schema(description = "Payment order status right after creation.", example = "PENDING")
         String status,
 
+        @Schema(description = "MercadoPago preference ID for the Payment Brick.",
+                example = "123456789-abcdef1234")
+        String preferenceId,
+
         @Schema(description = "Instant after which this order can no longer be paid.",
                 example = "2026-07-13T21:00:00")
         LocalDateTime expiresAt) {

@@ -5,9 +5,12 @@ import co.edu.escuelaing.techcup.payment.exception.DuplicateEnrollmentOrderExcep
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodLimits;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
+import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
+import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodLimitsRepositoryPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
+import co.edu.escuelaing.techcup.payment.service.ports.PreferenceResult;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,11 +20,14 @@ public class CreatePaymentOrderService implements CreatePaymentOrderUseCase {
 
     private final PaymentOrderRepositoryPort paymentOrderRepository;
     private final PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository;
+    private final PaymentGatewayPort paymentGateway;
 
     public CreatePaymentOrderService(PaymentOrderRepositoryPort paymentOrderRepository,
-            PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository) {
+            PaymentMethodLimitsRepositoryPort paymentMethodLimitsRepository,
+            PaymentGatewayPort paymentGateway) {
         this.paymentOrderRepository = paymentOrderRepository;
         this.paymentMethodLimitsRepository = paymentMethodLimitsRepository;
+        this.paymentGateway = paymentGateway;
     }
 
     @Override
@@ -38,7 +44,26 @@ public class CreatePaymentOrderService implements CreatePaymentOrderUseCase {
             throw new DuplicateEnrollmentOrderException(
                     "Ya existe una orden de pago para enrollmentId " + enrollmentId);
         }
-        PaymentOrder paymentOrder = PaymentOrder.create(enrollmentId, teamId, tournamentId, amount);
+
+        String idempotencyKey = java.util.UUID.randomUUID().toString();
+        PreferenceResult preference = paymentGateway.createPreference(
+                idempotencyKey,
+                "Inscripcion torneo " + tournamentId,
+                amount,
+                null,
+                null);
+
+        PaymentOrder paymentOrder = PaymentOrder.builder()
+                .paymentOrderId(java.util.UUID.randomUUID())
+                .enrollmentId(enrollmentId)
+                .teamId(teamId)
+                .tournamentId(tournamentId)
+                .amount(amount)
+                .status(PaymentOrderStatus.PENDING)
+                .idempotencyKey(idempotencyKey)
+                .preferenceId(preference.preferenceId())
+                .expiresAt(java.time.LocalDateTime.now(java.time.ZoneId.systemDefault()).plusMinutes(60))
+                .build();
         return paymentOrderRepository.save(paymentOrder);
     }
 }

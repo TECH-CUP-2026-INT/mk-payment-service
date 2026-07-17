@@ -51,6 +51,8 @@ public class PaymentOrderEntity {
 
     private String externalResourceUrl;
 
+    private String preferenceId;
+
     private String payerEmail;
 
     private String payerIdType;

@@ -20,6 +20,7 @@ public final class PaymentOrder extends AggregateRoot {
     private final BigDecimal amount;
     private final String idempotencyKey;
     private final LocalDateTime expiresAt;
+    private final String preferenceId;
 
     private PaymentOrderStatus status;
     private String mpPaymentId;
@@ -39,6 +40,7 @@ public final class PaymentOrder extends AggregateRoot {
         this.externalResourceUrl = builder.externalResourceUrl;
         this.payer = builder.payer;
         this.expiresAt = builder.expiresAt;
+        this.preferenceId = builder.preferenceId;
         this.version = builder.version;
     }
 
@@ -162,6 +164,10 @@ public final class PaymentOrder extends AggregateRoot {
         return expiresAt;
     }
 
+    public String getPreferenceId() {
+        return preferenceId;
+    }
+
     public Long getVersion() {
         return version;
     }
@@ -202,6 +208,7 @@ public final class PaymentOrder extends AggregateRoot {
         private String externalResourceUrl;
         private Payer payer;
         private LocalDateTime expiresAt;
+        private String preferenceId;
         private Long version;
 
         private Builder() {
@@ -259,6 +266,11 @@ public final class PaymentOrder extends AggregateRoot {
 
         public Builder expiresAt(LocalDateTime expiresAt) {
             this.expiresAt = expiresAt;
+            return this;
+        }
+
+        public Builder preferenceId(String preferenceId) {
+            this.preferenceId = preferenceId;
             return this;
         }
 

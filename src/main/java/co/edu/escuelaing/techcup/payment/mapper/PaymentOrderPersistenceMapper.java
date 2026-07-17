@@ -43,6 +43,7 @@ public interface PaymentOrderPersistenceMapper {
                 .mpPaymentId(entity.getMpPaymentId())
                 .idempotencyKey(entity.getIdempotencyKey())
                 .externalResourceUrl(entity.getExternalResourceUrl())
+                .preferenceId(entity.getPreferenceId())
                 .payer(entityToPayer(entity))
                 .expiresAt(entity.getExpiresAt())
                 .version(intToLong(entity.getVersion()))
