@@ -1,19 +1,27 @@
 # API
 
-## Información general
+## Overview
 
-| Atributo | Valor |
-|----------|-------|
+The service exposes a single **REST API** for two purposes: managing payment orders (create, submit PSE, query status) and querying PSE payment method limits — plus the inbound webhook Mercado Pago uses to notify payment results. There is no WebSocket or streaming interface; every interaction is a synchronous HTTP request/response.
+
+It is documented with **springdoc-openapi**: once the app is running, the interactive Swagger UI is available at `/swagger-ui.html` (raw spec at `/v3/api-docs`). Every endpoint below is described exactly as it appears there — same summaries, same request/response examples — just grouped by resource and written out in plain language.
+
+Endpoints are grouped into two resources, matching the OpenAPI tags: **Payment Orders** (`/payment-orders`) and **Payment Methods** (`/payment-methods`). None of them currently require authentication.
+
+## General Information
+
+| Attribute | Value |
+|-----------|-------|
 | Base URL (local) | `http://localhost:8080` |
-| Formato | JSON |
-| Documentación interactiva | `/swagger-ui.html` (Swagger UI) · `/v3/api-docs` (OpenAPI JSON) |
+| Format | JSON |
+| Interactive documentation | `/swagger-ui.html` (Swagger UI) · `/v3/api-docs` (OpenAPI JSON) |
 
-!!! info "Contrato con Tournament Service"
-    `GET /payment-orders/{enrollmentId}` y `POST /payment-orders` ya son consumidos por `mk-tournament-service` (`PaymentServiceClientAdapter`). Cambiar el nombre de un campo de respuesta, aunque sea de mayúsculas a minúsculas, rompe ese consumidor en silencio — su adaptador nunca lanza excepción, solo degrada a `UNKNOWN`.
+!!! info "Contract with Tournament Service"
+    `GET /payment-orders/{enrollmentId}` and `POST /payment-orders` are already consumed by `mk-tournament-service` (`PaymentServiceClientAdapter`). Renaming a response field, even just changing its casing, silently breaks that consumer — its adapter never throws an exception, it just degrades to `UNKNOWN`.
 
 ## Endpoints
 
-### Crear orden de pago — TC-PAY-01
+### Create payment order — TC-PAY-01
 
 `POST /payment-orders`
 
@@ -38,17 +46,17 @@
 }
 ```
 
-**Errores:**
+**Errors:**
 
-| Código | Causa |
-|--------|-------|
-| `400` | Body inválido (campos faltantes, `amount` ≤ 0) |
-| `409` | Ya existe una orden para ese `enrollmentId` |
-| `422` | El monto está fuera del rango permitido por Mercado Pago para PSE |
+| Code | Cause |
+|------|-------|
+| `400` | Invalid body (missing fields, `amount` ≤ 0) |
+| `409` | An order already exists for that `enrollmentId` |
+| `422` | The amount is outside the range allowed by Mercado Pago for PSE |
 
 ---
 
-### Enviar transacción PSE — TC-PAY-02
+### Submit PSE transaction — TC-PAY-02
 
 `POST /payment-orders/{enrollmentId}/pse`
 
@@ -73,9 +81,9 @@
 }
 ```
 
-`firstName`, `lastName`, la dirección y el teléfono son obligatorios: Mercado Pago los exige para crear un pago PSE desde el 31/12/2024. El Payment Brick (repo de frontend, fuera de este servicio) no los recoge por sí solo — el checkout necesita un formulario propio adicional al `onSubmit` del Brick para completarlos.
+`firstName`, `lastName`, the address, and the phone number are mandatory: Mercado Pago has required them to create a PSE payment since 12/31/2024. The Payment Brick (frontend repo, outside this service) does not collect them on its own — the checkout needs an additional form on top of the Brick's `onSubmit` to complete them.
 
-`additional_info.ip_address`, requerido también por Mercado Pago, **no** viaja en este body: el backend lo captura del propio request HTTP (cabecera `X-Forwarded-For`, o la IP del socket si no hay proxy) para evitar que un cliente lo falsifique.
+`additional_info.ip_address`, also required by Mercado Pago, does **not** travel in this body: the backend captures it from the HTTP request itself (`X-Forwarded-For` header, or the socket IP if there is no proxy) to prevent a client from spoofing it.
 
 **Response `200 OK`:**
 
@@ -86,26 +94,26 @@
 }
 ```
 
-**Errores:**
+**Errors:**
 
-| Código | Causa |
-|--------|-------|
-| `400` | Body inválido |
-| `404` | No existe una orden para ese `enrollmentId` |
-| `409` | La orden no está en estado `PENDING` |
-| `410` | La orden ya expiró (se persiste la expiración en el mismo request) |
-| `502` | Mercado Pago rechazó la solicitud — la orden queda en `PENDING` para reintento |
+| Code | Cause |
+|------|-------|
+| `400` | Invalid body |
+| `404` | No order exists for that `enrollmentId` |
+| `409` | The order is not in `PENDING` state |
+| `410` | The order has already expired (the expiration is persisted in the same request) |
+| `502` | Mercado Pago rejected the request — the order stays in `PENDING` for retry |
 
 !!! info "callback-url vs. notification-url"
-    Este endpoint envía a Mercado Pago dos URLs distintas, configuradas por separado (`mercadopago.callback-url` y `mercadopago.notification-url`): `callback_url` es una URL del **frontend** a la que Mercado Pago redirige al pagador después de autenticarse con su banco, para que el Payment/Status Screen Brick lea `payment_id` de la query string; `notification_url` es el webhook de **este backend** (`POST /payment-orders/webhook`, TC-PAY-03). No deben apuntar al mismo lugar.
+    This endpoint sends Mercado Pago two distinct URLs, configured separately (`mercadopago.callback-url` and `mercadopago.notification-url`): `callback_url` is a **frontend** URL that Mercado Pago redirects the payer to after authenticating with their bank, so the Payment/Status Screen Brick can read `payment_id` from the query string; `notification_url` is **this backend's** webhook (`POST /payment-orders/webhook`, TC-PAY-03). They must not point to the same place.
 
 ---
 
-### Webhook de Mercado Pago — TC-PAY-03
+### Mercado Pago webhook — TC-PAY-03
 
 `POST /payment-orders/webhook`
 
-**Request body (enviado por Mercado Pago):**
+**Request body (sent by Mercado Pago):**
 
 ```json
 {
@@ -115,14 +123,14 @@
 }
 ```
 
-**Response:** siempre `204 No Content`, incluso si `data.id` no corresponde a ninguna orden — Mercado Pago reintenta ante cualquier código de error, así que este endpoint nunca falla.
+**Response:** always `204 No Content`, even if `data.id` does not match any order — Mercado Pago retries on any error code, so this endpoint never fails.
 
-!!! danger "Nunca se confía en el body"
-    El único dato que se usa del body es `data.id`. El estado real del pago se obtiene siempre llamando a la API de Mercado Pago (`GET /v1/payments/{id}`) — cualquier campo de estado que llegara en este body se ignora por diseño.
+!!! danger "The body is never trusted"
+    The only data used from the body is `data.id`. The actual payment status is always obtained by calling the Mercado Pago API (`GET /v1/payments/{id}`) — any status field arriving in this body is ignored by design.
 
 ---
 
-### Consultar estado de una orden — TC-PAY-04
+### Get payment order status — TC-PAY-04
 
 `GET /payment-orders/{enrollmentId}`
 
@@ -134,15 +142,15 @@
 }
 ```
 
-**Errores:**
+**Errors:**
 
-| Código | Causa |
-|--------|-------|
-| `404` | No existe una orden para ese `enrollmentId` |
+| Code | Cause |
+|------|-------|
+| `404` | No order exists for that `enrollmentId` |
 
 ---
 
-### Consultar límites de PSE — TC-PAY-06
+### Get PSE limits — TC-PAY-06
 
 `GET /payment-methods/limits?amount={amount}`
 
@@ -156,47 +164,47 @@
 }
 ```
 
-**Errores:**
+**Errors:**
 
-| Código | Causa |
-|--------|-------|
-| `404` | Aún no se ha ejecutado la sincronización de límites (`SyncPaymentMethodsJob`, corre diario) |
+| Code | Cause |
+|------|-------|
+| `404` | The payment method limits sync (`SyncPaymentMethodsJob`, runs daily) has not run yet |
 
-## Códigos de respuesta
+## Response Codes
 
-| Código | Descripción |
-|--------|-------------|
-| `200` | Operación exitosa |
-| `201` | Orden de pago creada |
-| `204` | Webhook procesado (siempre, sin importar el resultado interno) |
-| `400` | Body inválido (validación de Bean Validation) |
-| `404` | Orden de pago o límites de método de pago no encontrados |
-| `409` | Conflicto de estado (duplicado o transición inválida) |
-| `410` | La orden ya expiró |
-| `422` | Monto fuera de los límites permitidos |
-| `502` | Mercado Pago rechazó o no respondió la solicitud |
+| Code | Description |
+|------|-------------|
+| `200` | Successful operation |
+| `201` | Payment order created |
+| `204` | Webhook processed (always, regardless of internal outcome) |
+| `400` | Invalid body (Bean Validation) |
+| `404` | Payment order or payment method limits not found |
+| `409` | State conflict (duplicate or invalid transition) |
+| `410` | The order has already expired |
+| `422` | Amount outside the allowed limits |
+| `502` | Mercado Pago rejected or did not respond to the request |
 
-## Modelo de estados
+## State Model
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING
     PENDING --> AWAITING_BANK_CONFIRMATION : SubmitPseTransaction
-    PENDING --> EXPIRED : 60 min sin confirmar
-    AWAITING_BANK_CONFIRMATION --> APPROVED : webhook aprueba
-    AWAITING_BANK_CONFIRMATION --> REJECTED : webhook rechaza
-    AWAITING_BANK_CONFIRMATION --> EXPIRED : 60 min sin confirmar
+    PENDING --> EXPIRED : 60 min without confirmation
+    AWAITING_BANK_CONFIRMATION --> APPROVED : webhook approves
+    AWAITING_BANK_CONFIRMATION --> REJECTED : webhook rejects
+    AWAITING_BANK_CONFIRMATION --> EXPIRED : 60 min without confirmation
     APPROVED --> [*]
     REJECTED --> [*]
     EXPIRED --> [*]
 ```
 
-!!! note "EXPIRED es interno"
-    `EXPIRED` nunca se serializa tal cual en la API pública — `GetPaymentOrderStatus` lo mapea a `"REJECTED"` en la respuesta. El dominio y la base de datos conservan `EXPIRED` para auditoría interna.
+!!! note "EXPIRED is internal"
+    `EXPIRED` is never serialized as-is in the public API — `GetPaymentOrderStatus` maps it to `"REJECTED"` in the response. The domain and the database keep `EXPIRED` for internal auditing.
 
-## Convenciones
+## Conventions
 
-- Los identificadores de orden (`paymentOrderId`) son UUID generados por este servicio.
-- Los montos se expresan como números decimales con dos decimales de precisión (persistidos como `Decimal128` en MongoDB).
-- Las fechas siguen `LocalDateTime` en formato ISO 8601 sin zona horaria explícita.
-- `enrollmentId` es el identificador opaco que provee `mk-tournament-service`; una orden por `enrollmentId`.
+- Order identifiers (`paymentOrderId`) are UUIDs generated by this service.
+- Amounts are expressed as decimal numbers with two decimal places of precision (persisted as `NUMERIC(19,2)` in PostgreSQL).
+- Dates follow `LocalDateTime` in ISO 8601 format with no explicit time zone.
+- `enrollmentId` is the opaque identifier provided by `mk-tournament-service`; one order per `enrollmentId`.
