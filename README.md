@@ -22,11 +22,7 @@ El servicio sigue una **arquitectura hexagonal (Ports & Adapters)**, separando c
 |--------|--------------|
 | TC-PAY-01 | Crear una orden de pago asociada a una inscripción, validando el monto contra los límites vigentes de Mercado Pago para PSE |
 | TC-PAY-02 | Recibir los datos bancarios del pagador e iniciar la transacción PSE ante Mercado Pago |
-| TC-PAY-03 | Procesar el webhook de Mercado Pago para confirmar o rechazar el pago, consultando siempre la fuente de verdad |
 | TC-PAY-04 | Consultar el estado actual de una orden de pago por `enrollmentId` |
-| TC-PAY-05 | Expirar automáticamente las órdenes que no se completan en 60 minutos |
-| TC-PAY-06 | Consultar los límites de monto permitidos por Mercado Pago para PSE |
-| TC-PAY-07 | Sincronizar diariamente los límites de métodos de pago desde Mercado Pago |
 
 ### Modelo de estados de una orden
 
