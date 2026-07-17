@@ -5,8 +5,7 @@ metadata:
   namespace: payments
   labels:
     app: payments-api
-    azure-monitor: prometheus
-    release: ama-metrics
+    release: monitoring
 spec:
   selector:
     matchLabels:

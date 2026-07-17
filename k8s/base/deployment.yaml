@@ -32,7 +32,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: payments-api
-          image: ghcr.io/tech-cup-2026-int/mk-payment-service:latest
+          image: acrtechcuppaymentsqa.azurecr.io/mk-payment-service:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -68,22 +68,22 @@ spec:
                 secretKeyRef:
                   name: payments-api-secrets
                   key: spring.datasource.password
-            - name: MP_ACCESS_TOKEN
+            - name: MP_ACCESS_TOKEN_DEV
               valueFrom:
                 secretKeyRef:
                   name: payments-api-secrets
                   key: mercadopago.access-token
-            - name: MP_PUBLIC_KEY
+            - name: MP_PUBLIC_KEY_DEV
               valueFrom:
                 secretKeyRef:
                   name: payments-api-secrets
                   key: mercadopago.public-key
-            - name: MP_NOTIFICATION_URL
+            - name: MP_NOTIFICATION_URL_DEV
               valueFrom:
                 secretKeyRef:
                   name: payments-api-secrets
                   key: mercadopago.notification-url
-            - name: MP_CALLBACK_URL
+            - name: MP_CALLBACK_URL_DEV
               valueFrom:
                 secretKeyRef:
                   name: payments-api-secrets

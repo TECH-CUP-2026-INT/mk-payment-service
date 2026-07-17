@@ -82,7 +82,7 @@
 		<dependency>
 			<groupId>io.opentelemetry.instrumentation</groupId>
 			<artifactId>opentelemetry-spring-boot-starter</artifactId>
-			<version>2.14.0-alpha</version>
+			<version>2.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>net.logstash.logback</groupId>
