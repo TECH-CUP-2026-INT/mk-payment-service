@@ -21,7 +21,11 @@ import java.util.Optional;
 public class ProcessPaymentWebhookService implements ProcessPaymentWebhookUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(ProcessPaymentWebhookService.class);
+    // Payments API (legacy) usaba "approved"/"rejected"/"cancelled"; Orders API
+    // consolida los estados y usa "processed" (status_detail "accredited") para
+    // los pagos acreditados. Se mantienen ambos para tolerar ambas versiones.
     private static final String MP_STATUS_APPROVED = "approved";
+    private static final String MP_STATUS_PROCESSED = "processed";
     private static final String MP_STATUS_REJECTED = "rejected";
     private static final String MP_STATUS_CANCELLED = "cancelled";
 
@@ -53,7 +57,7 @@ public class ProcessPaymentWebhookService implements ProcessPaymentWebhookUseCas
         }
         PaymentOrder paymentOrder = maybeOrder.get();
 
-        boolean approved = MP_STATUS_APPROVED.equals(statusResult.status());
+        boolean approved = MP_STATUS_APPROVED.equals(statusResult.status()) || MP_STATUS_PROCESSED.equals(statusResult.status());
         boolean rejected = MP_STATUS_REJECTED.equals(statusResult.status()) || MP_STATUS_CANCELLED.equals(statusResult.status());
         if (!approved && !rejected) {
             log.debug("Estado {} de Mercado Pago para la orden {} no requiere transición", statusResult.status(),
