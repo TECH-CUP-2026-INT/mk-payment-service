@@ -43,6 +43,9 @@ jobs:
       - name: Compilar
         run: ./mvnw --batch-mode --no-transfer-progress compile
 
+      - name: Forzar versión de API de Docker (fix Testcontainers + Docker Engine 29)
+        run: echo 'api.version=1.44' > ~/.docker-java.properties
+
       - name: Ejecutar pruebas
         run: ./mvnw --batch-mode --no-transfer-progress test
 
