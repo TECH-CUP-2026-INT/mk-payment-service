@@ -31,6 +31,7 @@
 		<cucumber.version>7.20.1</cucumber.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<otel.version>1.33.6</otel.version>
+		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -178,6 +179,11 @@
 						<goals><goal>report</goal></goals>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>5.8.0.7211</version>
 			</plugin>
 
 		</plugins>
