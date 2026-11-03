@@ -132,8 +132,13 @@ id de la **order** (la referencia que el servicio persiste).
 
 | Variable | Estado |
 |---|---|
-| `MP_ACCESS_TOKEN_DEV` | Token sandbox (`TEST-...`). **No** usar `APP_USR-...` en dev. |
-| `MP_PUBLIC_KEY_DEV` | Public key sandbox (`TEST-...`). |
+| `MP_ACCESS_TOKEN_DEV` | **Access Token `APP_USR-...` de un vendedor de prueba** (test seller), con aplicación "Checkout Transparente / Orders API". La Orders API **no acepta** `TEST-` (devuelve `401 invalid_credentials`). |
+| `MP_PUBLIC_KEY_DEV` | Public key `APP_USR-...` (de la misma aplicación del vendedor de prueba). |
+
+> ⚠️ **Importante:** en la Orders API el `payer.email` puede ser **cualquier email
+> válido** (no hace falta un comprador de prueba). El que **no** funciona es el
+> token `TEST-`: hay que usar el `APP_USR-` de un **vendedor de prueba**, no el de
+> tu cuenta real (que mueve dinero real).
 | `MP_CALLBACK_URL_DEV` | URL del frontend (se envía en `config.online.callback_url`). |
 | `MP_NOTIFICATION_URL_DEV` | Ya **no se usa por solicitud**; configurar webhook en el panel. |
 
