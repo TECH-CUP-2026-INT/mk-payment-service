@@ -32,7 +32,10 @@ import java.util.List;
  *   <li>El método de pago se declara dentro de {@code transactions.payments[].payment_method}
  *       (con {@code id}, {@code type} y {@code financial_institution}).</li>
  *   <li>El {@code callback_url} se envía en {@code config.online.callback_url}.</li>
- *   <li>La IP del pagador va en {@code additional_info.payer.ip_address}.</li>
+ *   <li>La IP del pagador va en {@code additional_info} como clave plana literal
+ *       {@code "payer.ip_address"} (la Orders API rechaza el anidamiento
+ *       {@code payer.ip_address} que documenta la referencia; exige la clave con
+ *       punto literal por un bug de validación del endpoint).</li>
  *   <li>El {@code notification_url} ya no se envía por solicitud: se configura
  *       como webhook en el panel de Mercado Pago.</li>
  * </ul>
@@ -91,7 +94,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                     .body(new CreateOrderApiRequest(
                             ORDER_TYPE,
                             new TransactionsApiRequest(List.of(new PaymentApiRequest(
-                                    amount.toPlainString(),
+                                    amount.stripTrailingZeros().toPlainString(),
                                     new PaymentMethodApiRequest(PSE_PAYMENT_METHOD_ID, PSE_PAYMENT_TYPE,
                                             financialInstitution)))),
                             new PayerApiRequest(payer.email(), payer.entityType(), payer.firstName(), payer.lastName(),
@@ -99,10 +102,10 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                                     new PhoneApiRequest(payer.phoneAreaCode(), payer.phoneNumber()),
                                     new AddressApiRequest(payer.addressZipCode(), payer.addressStreetName(),
                                             payer.addressStreetNumber(), payer.addressNeighborhood(), payer.addressCity())),
-                            amount.toPlainString(),
+                            amount.stripTrailingZeros().toPlainString(),
                             PROCESSING_MODE_AUTOMATIC,
                             new ConfigApiRequest(new OnlineConfigApiRequest(callbackUrl)),
-                            new AdditionalInfoApiRequest(new PayerAdditionalInfoApiRequest(ipAddress))))
+                            new AdditionalInfoApiRequest(ipAddress)))
                     .retrieve()
                     .body(OrderApiResponse.class);
             if (response == null) {
@@ -245,10 +248,10 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     private record OnlineConfigApiRequest(@JsonProperty("callback_url") String callbackUrl) {
     }
 
-    private record AdditionalInfoApiRequest(@JsonProperty("payer") PayerAdditionalInfoApiRequest payer) {
-    }
-
-    private record PayerAdditionalInfoApiRequest(@JsonProperty("ip_address") String ipAddress) {
+    private record AdditionalInfoApiRequest(
+            // La Orders API exige "additional_info" con la clave plana literal
+            // "payer.ip_address" (no el anidamiento payer.ip_address de la doc).
+            @JsonProperty("payer.ip_address") String payerIpAddress) {
     }
 
     // ---------------------------------------------------------------------

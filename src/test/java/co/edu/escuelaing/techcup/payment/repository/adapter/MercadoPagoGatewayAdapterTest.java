@@ -66,7 +66,7 @@ class MercadoPagoGatewayAdapterTest {
                 .andExpect(jsonPath("$.total_amount").value("50000"))
                 .andExpect(jsonPath("$.processing_mode").value("automatic"))
                 .andExpect(jsonPath("$.config.online.callback_url").value("https://frontend.test/checkout/pse-return"))
-                .andExpect(jsonPath("$.additional_info.payer.ip_address").value("200.10.20.30"))
+                .andExpect(jsonPath("$.additional_info['payer.ip_address']").value("200.10.20.30"))
                 .andRespond(withSuccess("""
                         {"id": "ORD123", "status": "pending", "transactions": {"payments": [
                             {"id": "PAY123", "status": "pending", "payment_method": {"redirect_url": "https://mp.test/ticket/1"}}
