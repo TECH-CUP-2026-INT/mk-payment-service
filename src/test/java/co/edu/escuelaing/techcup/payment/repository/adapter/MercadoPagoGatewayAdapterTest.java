@@ -42,11 +42,14 @@ class MercadoPagoGatewayAdapterTest {
     }
 
     @Test
-    @DisplayName("createPseTransaction envía el payer completo, additional_info.ip_address y callback_url/notification_url distintos")
-    void sendsFullPayerAndDistinctUrls() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
-                .andExpect(jsonPath("$.payment_method_id").value("pse"))
-                .andExpect(jsonPath("$.transaction_amount").value(50000))
+    @DisplayName("createPseTransaction crea una order PSE con la estructura de la Orders API")
+    void createsPseOrderWithOrdersApiStructure() {
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders"))
+                .andExpect(jsonPath("$.type").value("online"))
+                .andExpect(jsonPath("$.transactions.payments[0].amount").value("50000"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.id").value("pse"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.type").value("bank_transfer"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.financial_institution").value("1007"))
                 .andExpect(jsonPath("$.payer.email").value("payer@test.com"))
                 .andExpect(jsonPath("$.payer.entity_type").value("individual"))
                 .andExpect(jsonPath("$.payer.identification.type").value("CC"))
@@ -60,12 +63,14 @@ class MercadoPagoGatewayAdapterTest {
                 .andExpect(jsonPath("$.payer.address.city").value("Bogotá"))
                 .andExpect(jsonPath("$.payer.phone.area_code").value("601"))
                 .andExpect(jsonPath("$.payer.phone.number").value("12345"))
-                .andExpect(jsonPath("$.transaction_details.financial_institution").value("1007"))
-                .andExpect(jsonPath("$.additional_info.ip_address").value("200.10.20.30"))
-                .andExpect(jsonPath("$.callback_url").value("https://frontend.test/checkout/pse-return"))
-                .andExpect(jsonPath("$.notification_url").value("https://backend.test/payment-orders/webhook"))
+                .andExpect(jsonPath("$.total_amount").value("50000"))
+                .andExpect(jsonPath("$.processing_mode").value("automatic"))
+                .andExpect(jsonPath("$.config.online.callback_url").value("https://frontend.test/checkout/pse-return"))
+                .andExpect(jsonPath("$.additional_info.payer.ip_address").value("200.10.20.30"))
                 .andRespond(withSuccess("""
-                        {"id": 123, "status": "pending", "transaction_details": {"external_resource_url": "https://mp.test/ticket/1"}}
+                        {"id": "ORD123", "status": "pending", "transactions": {"payments": [
+                            {"id": "PAY123", "status": "pending", "payment_method": {"redirect_url": "https://mp.test/ticket/1"}}
+                        ]}}
                         """, MediaType.APPLICATION_JSON));
 
         MercadoPagoGatewayAdapter adapter = buildAdapter();
@@ -73,35 +78,20 @@ class MercadoPagoGatewayAdapterTest {
         PseTransactionResult result = adapter.createPseTransaction("idem-1", new BigDecimal("50000"), "1007", PAYER,
                 "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook");
 
-        assertThat(result.mpPaymentId()).isEqualTo("123");
+        assertThat(result.mpPaymentId()).isEqualTo("ORD123");
         assertThat(result.status()).isEqualTo("pending");
+        assertThat(result.externalResourceUrl()).isEqualTo("https://mp.test/ticket/1");
         server.verify();
     }
 
     @Test
-    @DisplayName("callback_url y notification_url viajan como valores distintos, no el mismo dos veces")
-    void callbackUrlAndNotificationUrlAreNotConflated() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
-                .andExpect(jsonPath("$.callback_url").value("https://frontend.test/checkout/pse-return"))
-                .andExpect(jsonPath("$.notification_url").value("https://backend.test/payment-orders/webhook"))
+    @DisplayName("createPseTransaction extrae el estado del payment cuando no hay redirect_url")
+    void createsPseOrderWithoutRedirectUrl() {
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders"))
                 .andRespond(withSuccess("""
-                        {"id": 456, "status": "pending", "transaction_details": {"external_resource_url": "https://mp.test/ticket/2"}}
-                        """, MediaType.APPLICATION_JSON));
-
-        MercadoPagoGatewayAdapter adapter = buildAdapter();
-
-        adapter.createPseTransaction("idem-2", new BigDecimal("10000"), "1007", PAYER, "200.10.20.30",
-                "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook");
-
-        server.verify();
-    }
-
-    @Test
-    @DisplayName("createPseTransaction sin transaction_details deja externalResourceUrl en null")
-    void createPseTransactionWithoutTransactionDetails() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
-                .andRespond(withSuccess("""
-                        {"id": 789, "status": "pending"}
+                        {"id": "ORD789", "status": "pending", "transactions": {"payments": [
+                            {"id": "PAY789", "status": "pending"}
+                        ]}}
                         """, MediaType.APPLICATION_JSON));
 
         MercadoPagoGatewayAdapter adapter = buildAdapter();
@@ -109,7 +99,7 @@ class MercadoPagoGatewayAdapterTest {
         PseTransactionResult result = adapter.createPseTransaction("idem-3", new BigDecimal("30000"), "1007", PAYER,
                 "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook");
 
-        assertThat(result.mpPaymentId()).isEqualTo("789");
+        assertThat(result.mpPaymentId()).isEqualTo("ORD789");
         assertThat(result.status()).isEqualTo("pending");
         assertThat(result.externalResourceUrl()).isNull();
         server.verify();
@@ -118,7 +108,7 @@ class MercadoPagoGatewayAdapterTest {
     @Test
     @DisplayName("createPseTransaction envuelve una respuesta de error de Mercado Pago en PaymentGatewayException")
     void createPseTransactionWrapsErrorResponse() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders"))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST)
                         .body("{\"message\": \"invalid payer\"}")
                         .contentType(MediaType.APPLICATION_JSON));
@@ -135,7 +125,7 @@ class MercadoPagoGatewayAdapterTest {
     @Test
     @DisplayName("createPseTransaction envuelve un error inesperado (JSON inválido) en PaymentGatewayException")
     void createPseTransactionWrapsUnexpectedError() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders"))
                 .andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
 
         MercadoPagoGatewayAdapter adapter = buildAdapter();
@@ -148,26 +138,28 @@ class MercadoPagoGatewayAdapterTest {
     }
 
     @Test
-    @DisplayName("getPaymentStatus retorna el estado consultado a Mercado Pago")
+    @DisplayName("getPaymentStatus consulta la order y retorna el estado del payment")
     void getPaymentStatusReturnsStatus() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments/123"))
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders/ORD123"))
                 .andRespond(withSuccess("""
-                        {"id": 123, "status": "approved"}
+                        {"id": "ORD123", "status": "processed", "transactions": {"payments": [
+                            {"id": "PAY123", "status": "processed"}
+                        ]}}
                         """, MediaType.APPLICATION_JSON));
 
         MercadoPagoGatewayAdapter adapter = buildAdapter();
 
-        PaymentStatusResult result = adapter.getPaymentStatus("123");
+        PaymentStatusResult result = adapter.getPaymentStatus("ORD123");
 
-        assertThat(result.mpPaymentId()).isEqualTo("123");
-        assertThat(result.status()).isEqualTo("approved");
+        assertThat(result.mpPaymentId()).isEqualTo("ORD123");
+        assertThat(result.status()).isEqualTo("processed");
         server.verify();
     }
 
     @Test
     @DisplayName("getPaymentStatus envuelve una respuesta de error de Mercado Pago en PaymentGatewayException")
     void getPaymentStatusWrapsErrorResponse() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments/999"))
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders/999"))
                 .andRespond(withStatus(HttpStatus.NOT_FOUND)
                         .body("{\"message\": \"not found\"}")
                         .contentType(MediaType.APPLICATION_JSON));
@@ -183,14 +175,14 @@ class MercadoPagoGatewayAdapterTest {
     @Test
     @DisplayName("getPaymentStatus envuelve un error inesperado en PaymentGatewayException")
     void getPaymentStatusWrapsUnexpectedError() {
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments/123"))
+        server.expect(requestTo("https://api.mercadopago.com/v1/orders/ORD123"))
                 .andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
 
         MercadoPagoGatewayAdapter adapter = buildAdapter();
 
-        assertThatThrownBy(() -> adapter.getPaymentStatus("123"))
+        assertThatThrownBy(() -> adapter.getPaymentStatus("ORD123"))
                 .isInstanceOf(PaymentGatewayException.class)
-                .hasMessageContaining("No se pudo consultar el estado del pago 123 en Mercado Pago");
+                .hasMessageContaining("No se pudo consultar el estado del pago ORD123 en Mercado Pago");
         server.verify();
     }
 
