@@ -53,7 +53,7 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de transacción PSE", ex);
         }
 
-        paymentOrder.assignGatewayReference(result.mpPaymentId(), result.externalResourceUrl());
+        paymentOrder.assignGatewayReference(result.mpPaymentId(), result.externalResourceUrl(), null);
         return paymentOrderRepository.save(paymentOrder);
     }
 
