@@ -41,14 +41,17 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     private final RestClient restClient;
     private final String accessToken;
+    private final boolean testToken;
 
     @Autowired
     public MercadoPagoGatewayAdapter(
             @Value("${mercadopago.base-url}") String baseUrl,
             @Value("${mercadopago.access-token}") String accessToken,
             @Value("${mercadopago.connect-timeout-millis}") int connectTimeoutMillis,
-            @Value("${mercadopago.read-timeout-millis}") int readTimeoutMillis) {
+            @Value("${mercadopago.read-timeout-millis}") int readTimeoutMillis,
+            @Value("${mercadopago.test-token:false}") boolean testToken) {
         this.accessToken = accessToken;
+        this.testToken = testToken;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(connectTimeoutMillis);
         requestFactory.setReadTimeout(readTimeoutMillis);
@@ -62,16 +65,19 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
         this.restClient = restClient;
         this.accessToken = accessToken;
+        this.testToken = false;
     }
 
     @Override
     public PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
             String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl) {
         try {
-            PsePaymentApiResponse response = restClient.post()
+            var spec = restClient.post()
                     .uri("/v1/payments")
                     .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
-                    .header("X-Idempotency-Key", idempotencyKey)
+                    .header("X-Idempotency-Key", idempotencyKey);
+            if (testToken) spec = spec.header("X-Test-Token", "true");
+            PsePaymentApiResponse response = spec
                     .body(new CreatePsePaymentApiRequest(
                             amount,
                             PaymentMethodId.PSE,

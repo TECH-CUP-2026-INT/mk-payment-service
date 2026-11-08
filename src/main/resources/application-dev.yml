@@ -18,3 +18,4 @@ mercadopago:
   # read payment_id from the query string. It must NOT point at this
   # backend's own webhook endpoint (that's notification-url, above).
   callback-url: ${MP_CALLBACK_URL_DEV:https://REPLACE-WITH-YOUR-FRONTEND-URL/checkout/pse-return}
+  test-token: true
