@@ -117,7 +117,9 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     @Override
     public CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
             String token, String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber) {
+            String identificationType, String identificationNumber, String notificationUrl) {
+        boolean hasIdentification = identificationType != null && !identificationType.isBlank()
+                && identificationNumber != null && !identificationNumber.isBlank();
         try {
             CardPaymentApiResponse response = restClient.post()
                     .uri("/v1/payments")
@@ -128,8 +130,9 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                             token,
                             paymentMethodId,
                             installments != null ? installments : 1,
+                            notificationUrl,
                             new CardPayerApiRequest(payerEmail,
-                                    identificationType != null && identificationNumber != null
+                                    hasIdentification
                                             ? new IdentificationApiRequest(identificationType, identificationNumber)
                                             : null)))
                     .retrieve()
@@ -254,6 +257,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("token") String token,
             @JsonProperty("payment_method_id") String paymentMethodId,
             @JsonProperty("installments") Integer installments,
+            @JsonProperty("notification_url") String notificationUrl,
             @JsonProperty("payer") CardPayerApiRequest payer) {
     }
 

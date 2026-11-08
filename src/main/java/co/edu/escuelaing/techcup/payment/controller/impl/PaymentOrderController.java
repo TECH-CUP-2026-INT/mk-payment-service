@@ -105,7 +105,8 @@ public class PaymentOrderController {
         PaymentOrder paymentOrder = submitBrickPaymentUseCase.submit(
                 enrollmentId, request.paymentMethodId(), request.token(),
                 request.installments(), request.payerEmail(), request.financialInstitution(),
-                null, resolveClientIp(httpRequest));
+                request.identificationType(), request.identificationNumber(),
+                resolveClientIp(httpRequest));
         return ResponseEntity.ok(new SubmitBrickPaymentResponse(
                 paymentOrder.getStatus().name(),
                 paymentOrder.getExternalResourceUrl(),

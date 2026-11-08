@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Locale;
 
 @Service
 public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
@@ -42,7 +42,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     @Override
     public PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            BigDecimal transactionAmount, String ipAddress) {
+            String identificationType, String identificationNumber, String ipAddress) {
 
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
@@ -53,7 +53,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         if (PSE_METHOD_ID.equalsIgnoreCase(paymentMethodId)) {
             return submitPse(paymentOrder, financialInstitution, payerEmail, ipAddress);
         }
-        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail, null, null);
+        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail,
+                identificationType, identificationNumber);
     }
 
     private PaymentOrder submitPse(PaymentOrder paymentOrder, String financialInstitution,
@@ -81,8 +82,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
 
     private PaymentOrder submitCard(PaymentOrder paymentOrder, String token,
             String paymentMethodId, Integer installments, String payerEmail,
-            @SuppressWarnings("unused") String identificationType,
-            @SuppressWarnings("unused") String identificationNumber) {
+            String identificationType, String identificationNumber) {
 
         paymentOrder.startCardTransaction();
 
@@ -91,13 +91,33 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
             result = paymentGateway.createCardTransaction(paymentOrder.getIdempotencyKey(),
                     paymentOrder.getAmount(), token, paymentMethodId,
                     installments != null ? installments : 1, payerEmail,
-                    identificationType, identificationNumber);
+                    identificationType, identificationNumber, notificationUrl);
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de pago con tarjeta", ex);
         }
 
         paymentOrder.assignGatewayReference(result.mpPaymentId(), null, result.statusDetail());
+        resolveCardStatus(paymentOrder, result.status());
         return paymentOrderRepository.save(paymentOrder);
+    }
+
+    /**
+     * Maps Mercado Pago's card status onto the domain. Card flows do not need a
+     * bank confirmation, so an approved/rejected card resolves the order
+     * immediately; anything that is still pending keeps AWAITING_BANK_CONFIRMATION
+     * until the webhook reports the final status.
+     */
+    private void resolveCardStatus(PaymentOrder paymentOrder, String mpStatus) {
+        if (mpStatus == null) {
+            return;
+        }
+        switch (mpStatus.toLowerCase(Locale.ROOT)) {
+            case "approved", "processed" -> paymentOrder.approve(paymentOrder.getMpPaymentId());
+            case "rejected", "cancelled" -> paymentOrder.reject();
+            default -> {
+                // pending / in_process / authorized: leave the order awaiting confirmation.
+            }
+        }
     }
 
     private void rejectIfExpired(PaymentOrder paymentOrder) {

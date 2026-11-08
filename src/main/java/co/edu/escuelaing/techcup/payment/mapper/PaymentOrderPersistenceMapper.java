@@ -13,6 +13,7 @@ public interface PaymentOrderPersistenceMapper {
 
     @Mapping(source = "id", target = "paymentOrderId")
     @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
+    @Mapping(source = "gatewayStatusDetail", target = "gatewayStatusDetail")
     @Mapping(source = "payer.email", target = "payerEmail")
     @Mapping(source = "payer.identificationType", target = "payerIdType")
     @Mapping(source = "payer.identificationNumber", target = "payerIdNumber")
@@ -43,6 +44,7 @@ public interface PaymentOrderPersistenceMapper {
                 .mpPaymentId(entity.getMpPaymentId())
                 .idempotencyKey(entity.getIdempotencyKey())
                 .externalResourceUrl(entity.getExternalResourceUrl())
+                .gatewayStatusDetail(entity.getGatewayStatusDetail())
                 .payer(entityToPayer(entity))
                 .expiresAt(entity.getExpiresAt())
                 .version(intToLong(entity.getVersion()))

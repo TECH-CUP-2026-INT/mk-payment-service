@@ -41,6 +41,7 @@ public final class PaymentOrder extends AggregateRoot {
         this.payer = builder.payer;
         this.expiresAt = builder.expiresAt;
         this.version = builder.version;
+        this.gatewayStatusDetail = builder.gatewayStatusDetail;
     }
 
     public static PaymentOrder create(String enrollmentId, String teamId, String tournamentId, BigDecimal amount) {
@@ -217,6 +218,7 @@ public final class PaymentOrder extends AggregateRoot {
         private Payer payer;
         private LocalDateTime expiresAt;
         private Long version;
+        private String gatewayStatusDetail;
 
         private Builder() {
         }
@@ -278,6 +280,11 @@ public final class PaymentOrder extends AggregateRoot {
 
         public Builder version(Long version) {
             this.version = version;
+            return this;
+        }
+
+        public Builder gatewayStatusDetail(String gatewayStatusDetail) {
+            this.gatewayStatusDetail = gatewayStatusDetail;
             return this;
         }
 

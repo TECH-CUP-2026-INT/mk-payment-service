@@ -12,7 +12,7 @@ public interface PaymentGatewayPort {
 
     CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
             String token, String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber);
+            String identificationType, String identificationNumber, String notificationUrl);
 
     PaymentStatusResult getPaymentStatus(String mpPaymentId);
 
