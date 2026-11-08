@@ -1,10 +1,7 @@
 package co.edu.escuelaing.techcup.payment.mapper;
 
-import co.edu.escuelaing.techcup.payment.dto.request.SubmitPseTransactionRequest;
 import co.edu.escuelaing.techcup.payment.dto.response.CreatePaymentOrderResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.PaymentOrderStatusResponse;
-import co.edu.escuelaing.techcup.payment.dto.response.SubmitPseTransactionResponse;
-import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import org.mapstruct.Mapper;
@@ -18,20 +15,11 @@ public interface PaymentOrderRestMapper {
     @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
     CreatePaymentOrderResponse toCreateResponse(PaymentOrder paymentOrder);
 
-    @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
-    SubmitPseTransactionResponse toSubmitPseResponse(PaymentOrder paymentOrder);
-
     /**
      * EXPIRED es interno: se expone como REJECTED al cliente.
      */
     @Mapping(source = "status", target = "status", qualifiedByName = "statusToPublicString")
     PaymentOrderStatusResponse toStatusResponse(PaymentOrder paymentOrder);
-
-    @Mapping(source = "payerEmail", target = "email")
-    @Mapping(source = "identificationType", target = "identificationType")
-    @Mapping(source = "identificationNumber", target = "identificationNumber")
-    @Mapping(source = "entityType", target = "entityType")
-    Payer toPayer(SubmitPseTransactionRequest request);
 
     @Named("statusToString")
     default String statusToString(PaymentOrderStatus status) {

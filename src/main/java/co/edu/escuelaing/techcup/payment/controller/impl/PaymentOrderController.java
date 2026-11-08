@@ -2,18 +2,16 @@ package co.edu.escuelaing.techcup.payment.controller.impl;
 
 import co.edu.escuelaing.techcup.payment.dto.request.CreatePaymentOrderRequest;
 import co.edu.escuelaing.techcup.payment.dto.request.PaymentWebhookRequest;
-import co.edu.escuelaing.techcup.payment.dto.request.SubmitPseTransactionRequest;
+import co.edu.escuelaing.techcup.payment.dto.request.SubmitBrickPaymentRequest;
 import co.edu.escuelaing.techcup.payment.dto.response.CreatePaymentOrderResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.ErrorResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.PaymentOrderStatusResponse;
-import co.edu.escuelaing.techcup.payment.dto.response.SubmitPseTransactionResponse;
+import co.edu.escuelaing.techcup.payment.dto.response.SubmitBrickPaymentResponse;
 import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderRestMapper;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.ProcessPaymentWebhookUseCase;
-import co.edu.escuelaing.techcup.payment.dto.request.SubmitBrickPaymentRequest;
-import co.edu.escuelaing.techcup.payment.dto.response.SubmitBrickPaymentResponse;
 import co.edu.escuelaing.techcup.payment.service.ports.SubmitBrickPaymentUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,26 +36,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/payment-orders")
-@Tag(name = "Payment Orders", description = "Create payment orders, submit PSE transactions, receive Mercado Pago webhooks, and query payment order status.")
+@Tag(name = "Payment Orders", description = "Create payment orders, submit payments via Brick, receive Mercado Pago webhooks, and query payment order status.")
 public class PaymentOrderController {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentOrderController.class);
 
     private final CreatePaymentOrderUseCase createPaymentOrderUseCase;
     private final SubmitBrickPaymentUseCase submitBrickPaymentUseCase;
-    private final SubmitPseTransactionUseCase submitPseTransactionUseCase;
     private final ProcessPaymentWebhookUseCase processPaymentWebhookUseCase;
     private final GetPaymentOrderStatusUseCase getPaymentOrderStatusUseCase;
     private final PaymentOrderRestMapper mapper;
 
     public PaymentOrderController(CreatePaymentOrderUseCase createPaymentOrderUseCase,
-            SubmitPseTransactionUseCase submitPseTransactionUseCase,
             SubmitBrickPaymentUseCase submitBrickPaymentUseCase,
             ProcessPaymentWebhookUseCase processPaymentWebhookUseCase,
             GetPaymentOrderStatusUseCase getPaymentOrderStatusUseCase,
             PaymentOrderRestMapper mapper) {
         this.createPaymentOrderUseCase = createPaymentOrderUseCase;
-        this.submitPseTransactionUseCase = submitPseTransactionUseCase;
         this.submitBrickPaymentUseCase = submitBrickPaymentUseCase;
         this.processPaymentWebhookUseCase = processPaymentWebhookUseCase;
         this.getPaymentOrderStatusUseCase = getPaymentOrderStatusUseCase;
@@ -84,69 +79,14 @@ public class PaymentOrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toCreateResponse(paymentOrder));
     }
 
-    @Operation(summary = "Submit a PSE transaction",
-            description = "Called from the frontend once the Mercado Pago Payment Brick's onSubmit callback fires "
-                    + "for PSE, combined with payer details collected in a manual form (the Brick alone does not "
-                    + "collect payer name/address/phone). Creates the actual PSE payment in Mercado Pago and moves "
-                    + "the order to AWAITING_BANK_CONFIRMATION.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Transaction accepted by Mercado Pago; redirect the payer to externalResourceUrl.",
-                    content = @Content(schema = @Schema(implementation = SubmitPseTransactionResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid body (missing/malformed payer fields).",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
-            @ApiResponse(responseCode = "404", description = "No payment order exists for this enrollmentId.",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "The payment order is not in PENDING status.",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "410", description = "The payment order already expired.",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "502", description = "Mercado Pago rejected the request; the order stays PENDING for retry.",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PostMapping("/{enrollmentId}/pse")
-    public ResponseEntity<SubmitPseTransactionResponse> submitPse(
-            @Parameter(description = "enrollmentId of the pending order to submit PSE payment for.", example = "enr-12345")
-            @PathVariable String enrollmentId,
-            @Valid @RequestBody SubmitPseTransactionRequest request, HttpServletRequest httpRequest) {
-        PaymentOrder paymentOrder = submitPseTransactionUseCase.submit(
-                enrollmentId, mapper.toPayer(request), request.financialInstitution(), resolveClientIp(httpRequest));
-        return ResponseEntity.ok(mapper.toSubmitPseResponse(paymentOrder));
-    }
-
-    /**
-     * X-Forwarded-For may carry a comma-separated proxy chain; the first entry
-     * is the original client. Falls back to the socket address when the
-     * service is reached directly (e.g. local/dev, no reverse proxy in front).
-     * Azure App Service appends the client's port to that entry (e.g.
-     * "203.0.113.5:52341"); Mercado Pago rejects additional_info.ip_address
-     * if it isn't a bare IP, so the port must be stripped.
-     */
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return stripPort(forwardedFor.split(",")[0].trim());
-        }
-        return stripPort(request.getRemoteAddr());
-    }
-
-    private String stripPort(String hostAndMaybePort) {
-        if (hostAndMaybePort.startsWith("[")) {
-            int closingBracket = hostAndMaybePort.indexOf(']');
-            return closingBracket >= 0 ? hostAndMaybePort.substring(1, closingBracket) : hostAndMaybePort;
-        }
-        int colonCount = hostAndMaybePort.length() - hostAndMaybePort.replace(":", "").length();
-        if (colonCount == 1) {
-            return hostAndMaybePort.substring(0, hostAndMaybePort.indexOf(':'));
-        }
-        return hostAndMaybePort;
-    }
-
     @Operation(summary = "Submit a payment via Payment Brick",
             description = "Generic endpoint called from the frontend's Payment Brick onSubmit. "
-                    + "Routes to PSE (Orders API) or card (Payments API) based on paymentMethodId.")
+                    + "Routes to PSE (bank transfer) or card based on paymentMethodId.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Payment accepted.",
+            @ApiResponse(responseCode = "200", description = "Payment accepted by Mercado Pago.",
                     content = @Content(schema = @Schema(implementation = SubmitBrickPaymentResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid body.",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
             @ApiResponse(responseCode = "404", description = "No payment order for this enrollmentId.",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "Order not in PENDING status.",
@@ -158,6 +98,7 @@ public class PaymentOrderController {
     })
     @PostMapping("/{enrollmentId}/pay")
     public ResponseEntity<SubmitBrickPaymentResponse> submitBrickPayment(
+            @Parameter(description = "enrollmentId of the pending order.", example = "enr-12345")
             @PathVariable String enrollmentId,
             @Valid @RequestBody SubmitBrickPaymentRequest request,
             HttpServletRequest httpRequest) {
@@ -201,5 +142,25 @@ public class PaymentOrderController {
             @PathVariable String enrollmentId) {
         PaymentOrder paymentOrder = getPaymentOrderStatusUseCase.getByEnrollmentId(enrollmentId);
         return ResponseEntity.ok(mapper.toStatusResponse(paymentOrder));
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return stripPort(forwardedFor.split(",")[0].trim());
+        }
+        return stripPort(request.getRemoteAddr());
+    }
+
+    private String stripPort(String hostAndMaybePort) {
+        if (hostAndMaybePort.startsWith("[")) {
+            int closingBracket = hostAndMaybePort.indexOf(']');
+            return closingBracket >= 0 ? hostAndMaybePort.substring(1, closingBracket) : hostAndMaybePort;
+        }
+        int colonCount = hostAndMaybePort.length() - hostAndMaybePort.replace(":", "").length();
+        if (colonCount == 1) {
+            return hostAndMaybePort.substring(0, hostAndMaybePort.indexOf(':'));
+        }
+        return hostAndMaybePort;
     }
 }
