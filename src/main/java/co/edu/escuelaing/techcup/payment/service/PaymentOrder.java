@@ -26,6 +26,7 @@ public final class PaymentOrder extends AggregateRoot {
     private String externalResourceUrl;
     private Payer payer;
     private Long version;
+    private String gatewayStatusDetail;
 
     private PaymentOrder(Builder builder) {
         super(builder.paymentOrderId);
@@ -89,13 +90,14 @@ public final class PaymentOrder extends AggregateRoot {
      * this data only exists after the gateway call succeeds, and the webhook
      * flow (TC-PAY-03) needs mpPaymentId already indexed to look the order up.
      */
-    public void assignGatewayReference(String mpPaymentId, String externalResourceUrl) {
+    public void assignGatewayReference(String mpPaymentId, String externalResourceUrl, String gatewayStatusDetail) {
         if (status != PaymentOrderStatus.AWAITING_BANK_CONFIRMATION) {
             throw new PaymentOrderNotAwaitingBankConfirmationException(
                     NOT_AWAITING_BANK_CONFIRMATION_MESSAGE.formatted(getId(), status));
         }
         this.mpPaymentId = mpPaymentId;
         this.externalResourceUrl = externalResourceUrl;
+        this.gatewayStatusDetail = gatewayStatusDetail;
     }
 
     public void approve(String mpPaymentId) {
@@ -156,6 +158,10 @@ public final class PaymentOrder extends AggregateRoot {
 
     public String getIdempotencyKey() {
         return idempotencyKey;
+    }
+
+    public String getGatewayStatusDetail() {
+        return gatewayStatusDetail;
     }
 
     public String getExternalResourceUrl() {

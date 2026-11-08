@@ -137,7 +137,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             if (response == null) {
                 throw new IllegalStateException("Respuesta vacía de Mercado Pago");
             }
-            return new CardTransactionResult(String.valueOf(response.id()), response.status());
+            return new CardTransactionResult(String.valueOf(response.id()), response.status(), response.statusDetail());
         } catch (RestClientResponseException ex) {
             log.error("Mercado Pago respondió {} al crear el pago con tarjeta: {}",
                     ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
@@ -274,7 +274,8 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     private record CardPaymentApiResponse(
             @JsonProperty("id") Long id,
-            @JsonProperty("status") String status) {
+            @JsonProperty("status") String status,
+            @JsonProperty("status_detail") String statusDetail) {
     }
 
     private record PaymentStatusApiResponse(

@@ -75,7 +75,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de transacción PSE", ex);
         }
 
-        paymentOrder.assignGatewayReference(result.mpPaymentId(), result.externalResourceUrl());
+        paymentOrder.assignGatewayReference(result.mpPaymentId(), result.externalResourceUrl(), null);
         return paymentOrderRepository.save(paymentOrder);
     }
 
@@ -96,7 +96,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de pago con tarjeta", ex);
         }
 
-        paymentOrder.assignGatewayReference(result.mpPaymentId(), null);
+        paymentOrder.assignGatewayReference(result.mpPaymentId(), null, result.statusDetail());
         return paymentOrderRepository.save(paymentOrder);
     }
 

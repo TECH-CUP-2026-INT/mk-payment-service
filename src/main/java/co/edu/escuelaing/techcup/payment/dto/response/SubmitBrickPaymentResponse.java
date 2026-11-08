@@ -10,5 +10,11 @@ public record SubmitBrickPaymentResponse(
 
         @Schema(description = "PSE redirect URL (only present for PSE payments).",
                 example = "https://www.mercadopago.com/pse/ticket/1234567890")
-        String externalResourceUrl) {
+        String externalResourceUrl,
+
+        @Schema(description = "Mercado Pago payment id (only present for card payments).", example = "123456789")
+        String mpPaymentId,
+
+        @Schema(description = "Mercado Pago status detail (only present for card payments).", example = "accredited")
+        String statusDetail) {
 }

@@ -107,7 +107,10 @@ public class PaymentOrderController {
                 request.installments(), request.payerEmail(), request.financialInstitution(),
                 null, resolveClientIp(httpRequest));
         return ResponseEntity.ok(new SubmitBrickPaymentResponse(
-                paymentOrder.getStatus().name(), paymentOrder.getExternalResourceUrl()));
+                paymentOrder.getStatus().name(),
+                paymentOrder.getExternalResourceUrl(),
+                paymentOrder.getMpPaymentId(),
+                paymentOrder.getGatewayStatusDetail()));
     }
 
     @Operation(summary = "Receive a Mercado Pago webhook notification",
