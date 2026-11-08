@@ -12,6 +12,7 @@ import org.mapstruct.Named;
 public interface PaymentOrderRestMapper {
 
     @Mapping(source = "id", target = "paymentOrderId")
+    @Mapping(source = "enrollmentId", target = "enrollmentId")
     @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
     CreatePaymentOrderResponse toCreateResponse(PaymentOrder paymentOrder);
 

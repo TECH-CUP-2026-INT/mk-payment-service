@@ -11,6 +11,10 @@ public record CreatePaymentOrderResponse(
                 example = "b3f1c2a0-1234-4a5b-9c0d-abc123456789")
         UUID paymentOrderId,
 
+        @Schema(description = "Enrollment identifier associated with this order.",
+                example = "ENR-1720000000000")
+        String enrollmentId,
+
         @Schema(description = "Payment order status right after creation.", example = "PENDING")
         String status,
 
