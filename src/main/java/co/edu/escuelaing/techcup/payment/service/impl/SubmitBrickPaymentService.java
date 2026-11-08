@@ -42,7 +42,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     @Override
     public PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            BigDecimal transactionAmount, String ipAddress) {
+            BigDecimal transactionAmount, String ipAddress,
+            String identificationType, String identificationNumber) {
 
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
@@ -53,7 +54,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         if (PSE_METHOD_ID.equalsIgnoreCase(paymentMethodId)) {
             return submitPse(paymentOrder, financialInstitution, payerEmail, ipAddress);
         }
-        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail);
+        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail,
+                identificationType, identificationNumber);
     }
 
     private PaymentOrder submitPse(PaymentOrder paymentOrder, String financialInstitution,
@@ -80,7 +82,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     }
 
     private PaymentOrder submitCard(PaymentOrder paymentOrder, String token,
-            String paymentMethodId, Integer installments, String payerEmail) {
+            String paymentMethodId, Integer installments, String payerEmail,
+            String identificationType, String identificationNumber) {
 
         paymentOrder.startCardTransaction();
 
@@ -88,7 +91,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         try {
             result = paymentGateway.createCardTransaction(paymentOrder.getIdempotencyKey(),
                     paymentOrder.getAmount(), token, paymentMethodId,
-                    installments != null ? installments : 1, payerEmail);
+                    installments != null ? installments : 1, payerEmail,
+                    identificationType, identificationNumber);
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de pago con tarjeta", ex);
         }

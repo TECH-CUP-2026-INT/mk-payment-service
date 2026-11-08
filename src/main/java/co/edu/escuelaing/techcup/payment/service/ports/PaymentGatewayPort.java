@@ -11,7 +11,8 @@ public interface PaymentGatewayPort {
             String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl);
 
     CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
-            String token, String paymentMethodId, Integer installments, String payerEmail);
+            String token, String paymentMethodId, Integer installments, String payerEmail,
+            String identificationType, String identificationNumber);
 
     PaymentStatusResult getPaymentStatus(String mpPaymentId);
 

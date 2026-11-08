@@ -8,5 +8,6 @@ public interface SubmitBrickPaymentUseCase {
 
     PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            BigDecimal transactionAmount, String ipAddress);
+            BigDecimal transactionAmount, String ipAddress,
+            String identificationType, String identificationNumber);
 }
