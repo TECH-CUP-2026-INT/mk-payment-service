@@ -42,8 +42,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     @Override
     public PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            BigDecimal transactionAmount, String ipAddress,
-            String identificationType, String identificationNumber) {
+            BigDecimal transactionAmount, String ipAddress) {
 
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
@@ -54,8 +53,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         if (PSE_METHOD_ID.equalsIgnoreCase(paymentMethodId)) {
             return submitPse(paymentOrder, financialInstitution, payerEmail, ipAddress);
         }
-        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail,
-                identificationType, identificationNumber);
+        return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail, null, null);
     }
 
     private PaymentOrder submitPse(PaymentOrder paymentOrder, String financialInstitution,
@@ -83,7 +81,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
 
     private PaymentOrder submitCard(PaymentOrder paymentOrder, String token,
             String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber) {
+            @SuppressWarnings("unused") String identificationType,
+            @SuppressWarnings("unused") String identificationNumber) {
 
         paymentOrder.startCardTransaction();
 

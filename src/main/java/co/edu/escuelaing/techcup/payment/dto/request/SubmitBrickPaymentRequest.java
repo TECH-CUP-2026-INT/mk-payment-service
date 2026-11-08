@@ -23,11 +23,5 @@ public record SubmitBrickPaymentRequest(
         String payerEmail,
 
         @Schema(description = "PSE bank code (only for PSE payments).", example = "1007")
-        String financialInstitution,
-
-        @Schema(description = "Payer identification type (only for card payments).", example = "CC")
-        String identificationType,
-
-        @Schema(description = "Payer identification number (only for card payments).", example = "12345678")
-        String identificationNumber) {
+        String financialInstitution) {
 }
