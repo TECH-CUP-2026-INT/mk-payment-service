@@ -3,6 +3,7 @@ package co.edu.escuelaing.techcup.payment.repository.adapter;
 import co.edu.escuelaing.techcup.payment.exception.PaymentGatewayException;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.Payer;
+import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
@@ -21,35 +22,20 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Adaptador de Mercado Pago basado en la <b>Orders API</b> (Checkout API vía
- * Orders), que reemplaza a la antigua Payments API (legacy).
+ * Adaptador de Mercado Pago — Payments API ({@code POST /v1/payments}).
  *
- * <p>Desde la migración, una transacción PSE se materializa creando una
- * <i>order</i> en {@code POST /v1/orders} en modo {@code automatic}, en lugar
- * del antiguo {@code POST /v1/payments}. Los cambios principales son:</p>
+ * <p>PSE: {@code payment_method_id: "pse"} + {@code transaction_details.financial_institution}
+ * + datos completos del pagador. La respuesta incluye {@code external_resource_url} al que
+ * se redirige al usuario para completar la autenticación bancaria.</p>
  *
- * <ul>
- *   <li>El método de pago se declara dentro de {@code transactions.payments[].payment_method}
- *       (con {@code id}, {@code type} y {@code financial_institution}).</li>
- *   <li>El {@code callback_url} se envía en {@code config.online.callback_url}.</li>
- *   <li>La IP del pagador va en {@code additional_info} como clave plana literal
- *       {@code "payer.ip_address"} (la Orders API rechaza el anidamiento
- *       {@code payer.ip_address} que documenta la referencia; exige la clave con
- *       punto literal por un bug de validación del endpoint).</li>
- *   <li>El {@code notification_url} ya no se envía por solicitud: se configura
- *       como webhook en el panel de Mercado Pago.</li>
- * </ul>
+ * <p>Tarjetas: {@code token} + {@code payment_method_id} + {@code installments}.</p>
  *
- * @see <a href="https://www.mercadopago.com.co/developers/es/reference/online-payments/checkout-api/create-order/post">Referencia: crear order</a>
+ * @see <a href="https://www.mercadopago.com.co/developers/es/docs/checkout-bricks/payment-brick/payment-submission/pse">PSE con Payment Brick</a>
  */
 @Component
 public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoGatewayAdapter.class);
-    private static final String PSE_PAYMENT_METHOD_ID = PaymentMethodId.PSE;
-    private static final String PSE_PAYMENT_TYPE = "bank_transfer";
-    private static final String ORDER_TYPE = "online";
-    private static final String PROCESSING_MODE_AUTOMATIC = "automatic";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -72,12 +58,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                 .build();
     }
 
-    /**
-     * Test-only: lets MercadoPagoGatewayAdapterTest inject a RestClient bound
-     * to MockRestServiceServer. Spring never sees this one — @Autowired above
-     * pins the constructor it must use, since it can't disambiguate on its own
-     * once a class has more than one constructor.
-     */
+    /** Test-only constructor — Spring uses the @Autowired one above. */
     MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
         this.restClient = restClient;
         this.accessToken = accessToken;
@@ -87,38 +68,34 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     public PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
             String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl) {
         try {
-            OrderApiResponse response = restClient.post()
-                    .uri("/v1/orders")
+            PsePaymentApiResponse response = restClient.post()
+                    .uri("/v1/payments")
                     .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
                     .header("X-Idempotency-Key", idempotencyKey)
-                    .body(new CreateOrderApiRequest(
-                            ORDER_TYPE,
-                            new TransactionsApiRequest(List.of(new PaymentApiRequest(
-                                    amount.stripTrailingZeros().toPlainString(),
-                                    new PaymentMethodApiRequest(PSE_PAYMENT_METHOD_ID, PSE_PAYMENT_TYPE,
-                                            financialInstitution)))),
-                            new PayerApiRequest(payer.email(), payer.entityType(), payer.firstName(), payer.lastName(),
+                    .body(new CreatePsePaymentApiRequest(
+                            amount,
+                            PaymentMethodId.PSE,
+                            callbackUrl,
+                            notificationUrl,
+                            new PseTransactionDetailsApiRequest(financialInstitution),
+                            new PseAdditionalInfoApiRequest(ipAddress),
+                            new PsePayerApiRequest(
+                                    payer.email(),
+                                    payer.entityType(),
+                                    payer.firstName(),
+                                    payer.lastName(),
                                     new IdentificationApiRequest(payer.identificationType(), payer.identificationNumber()),
-                                    new PhoneApiRequest(payer.phoneAreaCode(), payer.phoneNumber()),
                                     new AddressApiRequest(payer.addressZipCode(), payer.addressStreetName(),
-                                            payer.addressStreetNumber(), payer.addressNeighborhood(), payer.addressCity())),
-                            amount.stripTrailingZeros().toPlainString(),
-                            PROCESSING_MODE_AUTOMATIC,
-                            new ConfigApiRequest(new OnlineConfigApiRequest(callbackUrl)),
-                            new AdditionalInfoApiRequest(ipAddress)))
+                                            payer.addressStreetNumber(), payer.addressNeighborhood(), payer.addressCity(), "1"),
+                                    new PhoneApiRequest(payer.phoneAreaCode(), payer.phoneNumber()))))
                     .retrieve()
-                    .body(OrderApiResponse.class);
+                    .body(PsePaymentApiResponse.class);
             if (response == null) {
                 throw new IllegalStateException("Respuesta vacía de Mercado Pago");
             }
-            // La referencia de la order es el identificador que el dominio persiste
-            // como mpPaymentId y que el webhook usa para localizar la orden.
-            String orderId = response.id();
-            String paymentStatus = paymentStatusOf(response);
-            String redirectUrl = redirectUrlOf(response);
-            return new PseTransactionResult(orderId, paymentStatus, redirectUrl);
+            return new PseTransactionResult(String.valueOf(response.id()), response.status(), response.externalResourceUrl());
         } catch (RestClientResponseException ex) {
-            log.error("Mercado Pago respondió {} al crear la order PSE: {}",
+            log.error("Mercado Pago respondió {} al crear el pago PSE: {}",
                     ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
             throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
         } catch (Exception ex) {
@@ -128,19 +105,49 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     }
 
     @Override
-    public PaymentStatusResult getPaymentStatus(String mpPaymentId) {
+    public CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
+            String token, String paymentMethodId, Integer installments, String payerEmail) {
         try {
-            OrderApiResponse response = restClient.get()
-                    .uri("/v1/orders/{id}", mpPaymentId)
+            CardPaymentApiResponse response = restClient.post()
+                    .uri("/v1/payments")
                     .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
+                    .header("X-Idempotency-Key", idempotencyKey)
+                    .body(new CreateCardPaymentApiRequest(
+                            amount,
+                            token,
+                            paymentMethodId,
+                            installments != null ? installments : 1,
+                            new CardPayerApiRequest(payerEmail)))
                     .retrieve()
-                    .body(OrderApiResponse.class);
+                    .body(CardPaymentApiResponse.class);
             if (response == null) {
                 throw new IllegalStateException("Respuesta vacía de Mercado Pago");
             }
-            return new PaymentStatusResult(response.id(), paymentStatusOf(response));
+            return new CardTransactionResult(String.valueOf(response.id()), response.status());
         } catch (RestClientResponseException ex) {
-            log.error("Mercado Pago respondió {} al consultar la order {}: {}",
+            log.error("Mercado Pago respondió {} al crear el pago con tarjeta: {}",
+                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+            throw new PaymentGatewayException("No se pudo crear el pago con tarjeta en Mercado Pago", ex);
+        } catch (Exception ex) {
+            log.error("Error inesperado al crear el pago con tarjeta en Mercado Pago", ex);
+            throw new PaymentGatewayException("No se pudo crear el pago con tarjeta en Mercado Pago", ex);
+        }
+    }
+
+    @Override
+    public PaymentStatusResult getPaymentStatus(String mpPaymentId) {
+        try {
+            PaymentStatusApiResponse response = restClient.get()
+                    .uri("/v1/payments/{id}", mpPaymentId)
+                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
+                    .retrieve()
+                    .body(PaymentStatusApiResponse.class);
+            if (response == null) {
+                throw new IllegalStateException("Respuesta vacía de Mercado Pago");
+            }
+            return new PaymentStatusResult(String.valueOf(response.id()), response.status());
+        } catch (RestClientResponseException ex) {
+            log.error("Mercado Pago respondió {} al consultar el pago {}: {}",
                     ex.getStatusCode(), mpPaymentId, ex.getResponseBodyAsString(), ex);
             throw new PaymentGatewayException("No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
         } catch (Exception ex) {
@@ -173,113 +180,91 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         }
     }
 
-    private static String paymentStatusOf(OrderApiResponse response) {
-        if (response.transactions() != null && response.transactions().payments() != null
-                && !response.transactions().payments().isEmpty()) {
-            return response.transactions().payments().get(0).status();
-        }
-        return response.status();
+    // -------------------------------------------------------------------------
+    // Request DTOs — PSE (Payments API)
+    // -------------------------------------------------------------------------
+
+    private record CreatePsePaymentApiRequest(
+            @JsonProperty("transaction_amount") BigDecimal transactionAmount,
+            @JsonProperty("payment_method_id") String paymentMethodId,
+            @JsonProperty("callback_url") String callbackUrl,
+            @JsonProperty("notification_url") String notificationUrl,
+            @JsonProperty("transaction_details") PseTransactionDetailsApiRequest transactionDetails,
+            @JsonProperty("additional_info") PseAdditionalInfoApiRequest additionalInfo,
+            @JsonProperty("payer") PsePayerApiRequest payer) {
     }
 
-    private static String redirectUrlOf(OrderApiResponse response) {
-        if (response.transactions() != null && response.transactions().payments() != null
-                && !response.transactions().payments().isEmpty()
-                && response.transactions().payments().get(0).paymentMethod() != null) {
-            return response.transactions().payments().get(0).paymentMethod().redirectUrl();
-        }
-        return null;
-    }
-
-    // ---------------------------------------------------------------------
-    // Request DTOs (Orders API)
-    // ---------------------------------------------------------------------
-
-    private record CreateOrderApiRequest(
-            @JsonProperty("type") String type,
-            @JsonProperty("transactions") TransactionsApiRequest transactions,
-            @JsonProperty("payer") PayerApiRequest payer,
-            @JsonProperty("total_amount") String totalAmount,
-            @JsonProperty("processing_mode") String processingMode,
-            @JsonProperty("config") ConfigApiRequest config,
-            @JsonProperty("additional_info") AdditionalInfoApiRequest additionalInfo) {
-    }
-
-    private record TransactionsApiRequest(@JsonProperty("payments") List<PaymentApiRequest> payments) {
-    }
-
-    private record PaymentApiRequest(
-            @JsonProperty("amount") String amount,
-            @JsonProperty("payment_method") PaymentMethodApiRequest paymentMethod) {
-    }
-
-    private record PaymentMethodApiRequest(
-            @JsonProperty("id") String id,
-            @JsonProperty("type") String type,
+    private record PseTransactionDetailsApiRequest(
             @JsonProperty("financial_institution") String financialInstitution) {
     }
 
-    private record PayerApiRequest(
+    private record PseAdditionalInfoApiRequest(
+            @JsonProperty("ip_address") String ipAddress) {
+    }
+
+    private record PsePayerApiRequest(
             @JsonProperty("email") String email,
             @JsonProperty("entity_type") String entityType,
             @JsonProperty("first_name") String firstName,
             @JsonProperty("last_name") String lastName,
             @JsonProperty("identification") IdentificationApiRequest identification,
-            @JsonProperty("phone") PhoneApiRequest phone,
-            @JsonProperty("address") AddressApiRequest address) {
+            @JsonProperty("address") AddressApiRequest address,
+            @JsonProperty("phone") PhoneApiRequest phone) {
     }
 
-    private record IdentificationApiRequest(String type, String number) {
-    }
-
-    private record PhoneApiRequest(@JsonProperty("area_code") String areaCode, String number) {
+    private record IdentificationApiRequest(
+            @JsonProperty("type") String type,
+            @JsonProperty("number") String number) {
     }
 
     private record AddressApiRequest(
             @JsonProperty("zip_code") String zipCode,
             @JsonProperty("street_name") String streetName,
             @JsonProperty("street_number") String streetNumber,
-            String neighborhood,
-            String city) {
+            @JsonProperty("neighborhood") String neighborhood,
+            @JsonProperty("city") String city,
+            @JsonProperty("federal_unit") String federalUnit) {
     }
 
-    private record ConfigApiRequest(@JsonProperty("online") OnlineConfigApiRequest online) {
+    private record PhoneApiRequest(
+            @JsonProperty("area_code") String areaCode,
+            @JsonProperty("number") String number) {
     }
 
-    private record OnlineConfigApiRequest(@JsonProperty("callback_url") String callbackUrl) {
+    // -------------------------------------------------------------------------
+    // Request DTOs — Cards (Payments API)
+    // -------------------------------------------------------------------------
+
+    private record CreateCardPaymentApiRequest(
+            @JsonProperty("transaction_amount") BigDecimal transactionAmount,
+            @JsonProperty("token") String token,
+            @JsonProperty("payment_method_id") String paymentMethodId,
+            @JsonProperty("installments") Integer installments,
+            @JsonProperty("payer") CardPayerApiRequest payer) {
     }
 
-    private record AdditionalInfoApiRequest(
-            // La Orders API exige "additional_info" con la clave plana literal
-            // "payer.ip_address" (no el anidamiento payer.ip_address de la doc).
-            @JsonProperty("payer.ip_address") String payerIpAddress) {
+    private record CardPayerApiRequest(@JsonProperty("email") String email) {
     }
 
-    // ---------------------------------------------------------------------
-    // Response DTOs (Orders API)
-    // ---------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Response DTOs
+    // -------------------------------------------------------------------------
 
-    private record OrderApiResponse(
-            String id,
-            String status,
-            @JsonProperty("transactions") TransactionsApiResponse transactions) {
+    private record PsePaymentApiResponse(
+            @JsonProperty("id") Long id,
+            @JsonProperty("status") String status,
+            @JsonProperty("external_resource_url") String externalResourceUrl) {
     }
 
-    private record TransactionsApiResponse(@JsonProperty("payments") List<PaymentApiResponse> payments) {
+    private record CardPaymentApiResponse(
+            @JsonProperty("id") Long id,
+            @JsonProperty("status") String status) {
     }
 
-    private record PaymentApiResponse(
-            String id,
-            String status,
-            @JsonProperty("payment_method") OrderPaymentMethodApiResponse paymentMethod) {
+    private record PaymentStatusApiResponse(
+            @JsonProperty("id") Long id,
+            @JsonProperty("status") String status) {
     }
-
-    private record OrderPaymentMethodApiResponse(
-            @JsonProperty("redirect_url") String redirectUrl) {
-    }
-
-    // ---------------------------------------------------------------------
-    // Payment methods DTOs (unchanged endpoint /v1/payment_methods)
-    // ---------------------------------------------------------------------
 
     private record PaymentMethodApiResponse(
             String id,

@@ -12,7 +12,9 @@ import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.ProcessPaymentWebhookUseCase;
-import co.edu.escuelaing.techcup.payment.service.ports.SubmitPseTransactionUseCase;
+import co.edu.escuelaing.techcup.payment.dto.request.SubmitBrickPaymentRequest;
+import co.edu.escuelaing.techcup.payment.dto.response.SubmitBrickPaymentResponse;
+import co.edu.escuelaing.techcup.payment.service.ports.SubmitBrickPaymentUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -42,6 +44,7 @@ public class PaymentOrderController {
     private static final Logger log = LoggerFactory.getLogger(PaymentOrderController.class);
 
     private final CreatePaymentOrderUseCase createPaymentOrderUseCase;
+    private final SubmitBrickPaymentUseCase submitBrickPaymentUseCase;
     private final SubmitPseTransactionUseCase submitPseTransactionUseCase;
     private final ProcessPaymentWebhookUseCase processPaymentWebhookUseCase;
     private final GetPaymentOrderStatusUseCase getPaymentOrderStatusUseCase;
@@ -49,11 +52,13 @@ public class PaymentOrderController {
 
     public PaymentOrderController(CreatePaymentOrderUseCase createPaymentOrderUseCase,
             SubmitPseTransactionUseCase submitPseTransactionUseCase,
+            SubmitBrickPaymentUseCase submitBrickPaymentUseCase,
             ProcessPaymentWebhookUseCase processPaymentWebhookUseCase,
             GetPaymentOrderStatusUseCase getPaymentOrderStatusUseCase,
             PaymentOrderRestMapper mapper) {
         this.createPaymentOrderUseCase = createPaymentOrderUseCase;
         this.submitPseTransactionUseCase = submitPseTransactionUseCase;
+        this.submitBrickPaymentUseCase = submitBrickPaymentUseCase;
         this.processPaymentWebhookUseCase = processPaymentWebhookUseCase;
         this.getPaymentOrderStatusUseCase = getPaymentOrderStatusUseCase;
         this.mapper = mapper;
@@ -134,6 +139,34 @@ public class PaymentOrderController {
             return hostAndMaybePort.substring(0, hostAndMaybePort.indexOf(':'));
         }
         return hostAndMaybePort;
+    }
+
+    @Operation(summary = "Submit a payment via Payment Brick",
+            description = "Generic endpoint called from the frontend's Payment Brick onSubmit. "
+                    + "Routes to PSE (Orders API) or card (Payments API) based on paymentMethodId.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Payment accepted.",
+                    content = @Content(schema = @Schema(implementation = SubmitBrickPaymentResponse.class))),
+            @ApiResponse(responseCode = "404", description = "No payment order for this enrollmentId.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Order not in PENDING status.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "410", description = "Order already expired.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "502", description = "Mercado Pago rejected the request.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{enrollmentId}/pay")
+    public ResponseEntity<SubmitBrickPaymentResponse> submitBrickPayment(
+            @PathVariable String enrollmentId,
+            @Valid @RequestBody SubmitBrickPaymentRequest request,
+            HttpServletRequest httpRequest) {
+        PaymentOrder paymentOrder = submitBrickPaymentUseCase.submit(
+                enrollmentId, request.paymentMethodId(), request.token(),
+                request.installments(), request.payerEmail(), request.financialInstitution(),
+                null, resolveClientIp(httpRequest));
+        return ResponseEntity.ok(new SubmitBrickPaymentResponse(
+                paymentOrder.getStatus().name(), paymentOrder.getExternalResourceUrl()));
     }
 
     @Operation(summary = "Receive a Mercado Pago webhook notification",

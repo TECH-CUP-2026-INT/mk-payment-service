@@ -75,6 +75,14 @@ public final class PaymentOrder extends AggregateRoot {
         this.status = PaymentOrderStatus.AWAITING_BANK_CONFIRMATION;
     }
 
+    public void startCardTransaction() {
+        if (status != PaymentOrderStatus.PENDING) {
+            throw new PaymentOrderNotPendingException(
+                    "La orden %s no está en estado PENDING (actual: %s)".formatted(getId(), status));
+        }
+        this.status = PaymentOrderStatus.AWAITING_BANK_CONFIRMATION;
+    }
+
     /**
      * Attaches Mercado Pago's own reference for this transaction once the PSE
      * request has been accepted. Kept separate from startPseTransaction because

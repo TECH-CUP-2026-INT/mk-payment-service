@@ -10,7 +10,7 @@ Endpoints are grouped into two resources, matching the OpenAPI tags: **Payment O
 
 ## General Information
 
-| Attribute | Value |
+| Attribute | Value |v
 |-----------|-------|
 | Base URL (local) | `http://localhost:8080` |
 | Format | JSON |
