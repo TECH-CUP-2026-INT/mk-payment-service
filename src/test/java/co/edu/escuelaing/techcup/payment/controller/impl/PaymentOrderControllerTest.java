@@ -2,15 +2,14 @@ package co.edu.escuelaing.techcup.payment.controller.impl;
 
 import co.edu.escuelaing.techcup.payment.dto.request.CreatePaymentOrderRequest;
 import co.edu.escuelaing.techcup.payment.dto.request.PaymentWebhookRequest;
-import co.edu.escuelaing.techcup.payment.dto.request.SubmitPseTransactionRequest;
+import co.edu.escuelaing.techcup.payment.dto.request.SubmitBrickPaymentRequest;
 import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderRestMapper;
-import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.ProcessPaymentWebhookUseCase;
-import co.edu.escuelaing.techcup.payment.service.ports.SubmitPseTransactionUseCase;
+import co.edu.escuelaing.techcup.payment.service.ports.SubmitBrickPaymentUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +25,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,7 +39,7 @@ class PaymentOrderControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private CreatePaymentOrderUseCase createPaymentOrderUseCase;
-    private SubmitPseTransactionUseCase submitPseTransactionUseCase;
+    private SubmitBrickPaymentUseCase submitBrickPaymentUseCase;
     private ProcessPaymentWebhookUseCase processPaymentWebhookUseCase;
     private GetPaymentOrderStatusUseCase getPaymentOrderStatusUseCase;
     private MockMvc mockMvc;
@@ -47,12 +47,12 @@ class PaymentOrderControllerTest {
     @BeforeEach
     void setUp() {
         createPaymentOrderUseCase = mock(CreatePaymentOrderUseCase.class);
-        submitPseTransactionUseCase = mock(SubmitPseTransactionUseCase.class);
+        submitBrickPaymentUseCase = mock(SubmitBrickPaymentUseCase.class);
         processPaymentWebhookUseCase = mock(ProcessPaymentWebhookUseCase.class);
         getPaymentOrderStatusUseCase = mock(GetPaymentOrderStatusUseCase.class);
         PaymentOrderRestMapper mapper = Mappers.getMapper(PaymentOrderRestMapper.class);
         PaymentOrderController controller = new PaymentOrderController(
-                createPaymentOrderUseCase, submitPseTransactionUseCase,
+                createPaymentOrderUseCase, submitBrickPaymentUseCase,
                 processPaymentWebhookUseCase, getPaymentOrderStatusUseCase, mapper);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
@@ -70,6 +70,10 @@ class PaymentOrderControllerTest {
                 .build();
     }
 
+    private static SubmitBrickPaymentRequest aPsePayRequest() {
+        return new SubmitBrickPaymentRequest("pse", null, null, "payer@test.com", "1007");
+    }
+
     @Test
     @DisplayName("POST /payment-orders crea la orden y devuelve 201")
     void createsOrder() throws Exception {
@@ -84,96 +88,81 @@ class PaymentOrderControllerTest {
                 .andExpect(status().isCreated());
     }
 
-    private static SubmitPseTransactionRequest aPseRequest(String entityType) {
-        return new SubmitPseTransactionRequest("1007", "payer@test.com", "CC", "123456", entityType,
-                "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
-    }
-
     @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse envía la transacción y devuelve 200")
-    void submitsPseTransaction() throws Exception {
-        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), any()))
+    @DisplayName("POST /payment-orders/{enrollmentId}/pay envía el pago y devuelve 200")
+    void submitsBrickPayment() throws Exception {
+        when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), any()))
                 .thenReturn(anOrder());
-        SubmitPseTransactionRequest request = aPseRequest("individual");
 
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
+        mockMvc.perform(post("/payment-orders/enr-1/pay")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(aPsePayRequest())))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse usa el primer IP de X-Forwarded-For como ipAddress")
-    void submitsPseTransactionHonoringForwardedFor() throws Exception {
-        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5")))
+    @DisplayName("POST /payment-orders/{enrollmentId}/pay usa el primer IP de X-Forwarded-For")
+    void submitsBrickPaymentHonoringForwardedFor() throws Exception {
+        when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("203.0.113.5")))
                 .thenReturn(anOrder());
-        SubmitPseTransactionRequest request = aPseRequest("individual");
 
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
+        mockMvc.perform(post("/payment-orders/enr-1/pay")
                         .header("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(aPsePayRequest())))
                 .andExpect(status().isOk());
 
-        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5"));
+        verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("203.0.113.5"));
     }
 
     @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse despoja el puerto que Azure agrega a X-Forwarded-For")
-    void submitsPseTransactionStrippingForwardedForPort() throws Exception {
-        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5")))
+    @DisplayName("POST /payment-orders/{enrollmentId}/pay despoja el puerto que Azure agrega a X-Forwarded-For")
+    void submitsBrickPaymentStrippingForwardedForPort() throws Exception {
+        when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("203.0.113.5")))
                 .thenReturn(anOrder());
-        SubmitPseTransactionRequest request = aPseRequest("individual");
 
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
+        mockMvc.perform(post("/payment-orders/enr-1/pay")
                         .header("X-Forwarded-For", "203.0.113.5:52341, 10.0.0.1:443")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(aPsePayRequest())))
                 .andExpect(status().isOk());
 
-        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("203.0.113.5"));
+        verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("203.0.113.5"));
     }
 
     @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse despoja el puerto de una IPv6 entre corchetes")
-    void submitsPseTransactionStrippingIpv6Port() throws Exception {
-        when(submitPseTransactionUseCase.submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("2001:db8::1")))
+    @DisplayName("POST /payment-orders/{enrollmentId}/pay despoja el puerto de una IPv6 entre corchetes")
+    void submitsBrickPaymentStrippingIpv6Port() throws Exception {
+        when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("2001:db8::1")))
                 .thenReturn(anOrder());
-        SubmitPseTransactionRequest request = aPseRequest("individual");
 
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
+        mockMvc.perform(post("/payment-orders/enr-1/pay")
                         .header("X-Forwarded-For", "[2001:db8::1]:52341")
                         .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(aPsePayRequest())))
                 .andExpect(status().isOk());
 
-        verify(submitPseTransactionUseCase).submit(eq("enr-1"), any(Payer.class), eq("1007"), eq("2001:db8::1"));
+        verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
+                eq("payer@test.com"), eq("1007"), isNull(), eq("2001:db8::1"));
     }
 
     @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType fuera del catálogo permitido")
-    void rejectsInvalidEntityType() throws Exception {
-        SubmitPseTransactionRequest request = aPseRequest("company");
+    @DisplayName("POST /payment-orders/{enrollmentId}/pay rechaza payerEmail en blanco")
+    void rejectsBlankPayerEmail() throws Exception {
+        SubmitBrickPaymentRequest request = new SubmitBrickPaymentRequest("pse", null, null, "", "1007");
 
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
+        mockMvc.perform(post("/payment-orders/enr-1/pay")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
-        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("POST /payment-orders/{enrollmentId}/pse rechaza entityType en blanco")
-    void rejectsBlankEntityType() throws Exception {
-        SubmitPseTransactionRequest request = aPseRequest(" ");
-
-        mockMvc.perform(post("/payment-orders/enr-1/pse")
-                        .contentType("application/json")
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        verify(submitPseTransactionUseCase, never()).submit(any(), any(), any(), any());
+        verify(submitBrickPaymentUseCase, never()).submit(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
