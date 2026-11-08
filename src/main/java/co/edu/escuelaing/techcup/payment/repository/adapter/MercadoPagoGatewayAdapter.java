@@ -71,12 +71,16 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     @Override
     public PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
             String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl) {
+        log.info("[PSE] Creando pago — idempotencyKey={} financialInstitution={} testToken={}",
+                idempotencyKey, financialInstitution, testToken);
         try {
             var spec = restClient.post()
                     .uri("/v1/payments")
                     .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
                     .header("X-Idempotency-Key", idempotencyKey);
-            if (testToken) spec = spec.header("X-Test-Token", "true");
+            if (testToken) spec = spec.header("x-test-token", "true");
+            log.info("[PSE] Headers salientes — X-Idempotency-Key={} x-test-token={}",
+                    idempotencyKey, testToken);
             PsePaymentApiResponse response = spec
                     .body(new CreatePsePaymentApiRequest(
                             amount,
