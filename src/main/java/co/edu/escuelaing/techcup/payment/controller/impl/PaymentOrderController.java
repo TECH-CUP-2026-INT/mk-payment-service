@@ -8,6 +8,7 @@ import co.edu.escuelaing.techcup.payment.dto.response.ErrorResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.PaymentOrderStatusResponse;
 import co.edu.escuelaing.techcup.payment.dto.response.SubmitBrickPaymentResponse;
 import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderRestMapper;
+import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
@@ -106,7 +107,7 @@ public class PaymentOrderController {
                 enrollmentId, request.paymentMethodId(), request.token(),
                 request.installments(), request.payerEmail(), request.financialInstitution(),
                 request.identificationType(), request.identificationNumber(),
-                resolveClientIp(httpRequest));
+                buildPayerForPse(request), resolveClientIp(httpRequest));
         return ResponseEntity.ok(new SubmitBrickPaymentResponse(
                 paymentOrder.getStatus().name(),
                 paymentOrder.getExternalResourceUrl(),
@@ -146,6 +147,32 @@ public class PaymentOrderController {
             @PathVariable String enrollmentId) {
         PaymentOrder paymentOrder = getPaymentOrderStatusUseCase.getByEnrollmentId(enrollmentId);
         return ResponseEntity.ok(mapper.toStatusResponse(paymentOrder));
+    }
+
+    private Payer buildPayerForPse(SubmitBrickPaymentRequest request) {
+        if (!"pse".equalsIgnoreCase(request.paymentMethodId())) {
+            return null;
+        }
+        // The Brick provides email, identification and entity_type, but NOT name,
+        // address or phone - those must come from a complementary form (mandatory
+        // for PSE since 31/12/2024). The Payer record validates them (throws 400
+        // via GlobalExceptionHandler if any is blank).
+        String entityType = (request.entityType() == null || request.entityType().isBlank())
+                ? "individual" : request.entityType();
+        return new Payer(
+                request.payerEmail(),
+                request.identificationType(),
+                request.identificationNumber(),
+                entityType,
+                request.firstName(),
+                request.lastName(),
+                request.addressZipCode(),
+                request.addressStreetName(),
+                request.addressStreetNumber(),
+                request.addressNeighborhood(),
+                request.addressCity(),
+                request.phoneAreaCode(),
+                request.phoneNumber());
     }
 
     private String resolveClientIp(HttpServletRequest request) {

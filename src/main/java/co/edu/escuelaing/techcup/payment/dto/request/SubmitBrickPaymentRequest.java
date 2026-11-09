@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
-@Schema(description = "Payload sent by the Payment Brick's onSubmit callback.")
+@Schema(description = "Payload sent by the Payment Brick's onSubmit callback. "
+        + "For PSE the payer fields (name, address, phone) are mandatory since 31/12/2024 and must be "
+        + "collected via a complementary form - the Brick only provides email, identification and bank.")
 public record SubmitBrickPaymentRequest(
 
         @Schema(description = "Mercado Pago payment method id (e.g. 'pse', 'visa', 'mastercard').", example = "pse")
@@ -25,9 +27,39 @@ public record SubmitBrickPaymentRequest(
         @Schema(description = "PSE bank code (only for PSE payments).", example = "1007")
         String financialInstitution,
 
-        @Schema(description = "Payer identification type (only for card payments).", example = "CC")
+        @Schema(description = "Payer identification type (CC, CE, NIT, ...). Required for PSE.", example = "CC")
         String identificationType,
 
-        @Schema(description = "Payer identification number (only for card payments).", example = "123456789")
-        String identificationNumber) {
+        @Schema(description = "Payer identification number. Required for PSE.", example = "123456789")
+        String identificationNumber,
+
+        @Schema(description = "Payer entity type ('individual' or 'association'). Only for PSE.", example = "individual")
+        String entityType,
+
+        @Schema(description = "Payer first name. Required for PSE.", example = "Juan")
+        String firstName,
+
+        @Schema(description = "Payer last name. Required for PSE.", example = "Perez")
+        String lastName,
+
+        @Schema(description = "Payer address zip code. Required for PSE (exactly 5 chars).", example = "11001")
+        String addressZipCode,
+
+        @Schema(description = "Payer street name. Required for PSE.", example = "Calle 1")
+        String addressStreetName,
+
+        @Schema(description = "Payer street number. Required for PSE.", example = "123")
+        String addressStreetNumber,
+
+        @Schema(description = "Payer neighborhood. Required for PSE.", example = "Centro")
+        String addressNeighborhood,
+
+        @Schema(description = "Payer city. Required for PSE.", example = "Bogotá")
+        String addressCity,
+
+        @Schema(description = "Payer phone area code. Required for PSE (3 chars).", example = "601")
+        String phoneAreaCode,
+
+        @Schema(description = "Payer phone number. Required for PSE.", example = "1234567")
+        String phoneNumber) {
 }

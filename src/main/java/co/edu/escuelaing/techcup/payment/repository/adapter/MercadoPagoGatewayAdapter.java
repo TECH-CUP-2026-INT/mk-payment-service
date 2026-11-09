@@ -270,9 +270,23 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     // Response DTOs
     // -------------------------------------------------------------------------
 
+    /**
+     * Mercado Pago devuelve {@code external_resource_url} ANIDADO dentro de
+     * {@code transaction_details}, no en el nivel raíz de la respuesta. Leerlo
+     * del nivel raíz (como hacía antes) dejaba el redirect PSE en null y el
+     * comprador nunca era redirigido al banco.
+     */
     private record PsePaymentApiResponse(
             @JsonProperty("id") Long id,
             @JsonProperty("status") String status,
+            @JsonProperty("transaction_details") PseTransactionDetailsApiResponse transactionDetails) {
+
+        String externalResourceUrl() {
+            return transactionDetails == null ? null : transactionDetails.externalResourceUrl();
+        }
+    }
+
+    private record PseTransactionDetailsApiResponse(
             @JsonProperty("external_resource_url") String externalResourceUrl) {
     }
 

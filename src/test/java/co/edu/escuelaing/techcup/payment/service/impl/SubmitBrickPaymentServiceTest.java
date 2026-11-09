@@ -63,7 +63,7 @@ class SubmitBrickPaymentServiceTest {
 
     private PaymentOrder submitCard() {
         return service.submit("enr-1", "visa", "tok-visa", 1, "payer@test.com",
-                null, "CC", "12345678", "127.0.0.1");
+                null, "CC", "12345678", null, "127.0.0.1");
     }
 
     @Test

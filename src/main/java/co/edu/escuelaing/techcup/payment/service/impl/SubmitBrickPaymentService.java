@@ -42,7 +42,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     @Override
     public PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            String identificationType, String identificationNumber, String ipAddress) {
+            String identificationType, String identificationNumber, Payer payer, String ipAddress) {
 
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
@@ -51,20 +51,18 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         rejectIfExpired(paymentOrder);
 
         if (PSE_METHOD_ID.equalsIgnoreCase(paymentMethodId)) {
-            return submitPse(paymentOrder, financialInstitution, payerEmail, ipAddress);
+            return submitPse(paymentOrder, financialInstitution, payer, ipAddress);
         }
         return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail,
                 identificationType, identificationNumber);
     }
 
     private PaymentOrder submitPse(PaymentOrder paymentOrder, String financialInstitution,
-            String payerEmail, String ipAddress) {
-        // PSE requires a full Payer — the Brick only provides email + bank.
-        // The remaining fields are filled with safe placeholder values accepted
-        // by Mercado Pago's sandbox; production flows should collect them via a
-        // complementary form before calling this endpoint.
-        Payer payer = new Payer(payerEmail, "CC", "0", "individual",
-                "Pagador", "TechCup", "00000", "N/A", "0", "N/A", "N/A", "601", "00000");
+            Payer payer, String ipAddress) {
+        if (payer == null) {
+            throw new IllegalArgumentException(
+                    "Los datos del pagador (documento, nombre, dirección y teléfono) son obligatorios para PSE");
+        }
 
         paymentOrder.startPseTransaction(payer, financialInstitution);
 

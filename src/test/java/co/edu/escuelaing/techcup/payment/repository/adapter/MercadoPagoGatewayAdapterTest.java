@@ -66,7 +66,7 @@ class MercadoPagoGatewayAdapterTest {
                 .andExpect(jsonPath("$.payer.phone.area_code").value("601"))
                 .andExpect(jsonPath("$.payer.phone.number").value("12345"))
                 .andRespond(withSuccess("""
-                        {"id": 123456, "status": "pending", "external_resource_url": "https://mp.test/ticket/1"}
+                        {"id": 123456, "status": "pending", "transaction_details": {"external_resource_url": "https://mp.test/ticket/1"}}
                         """, MediaType.APPLICATION_JSON));
 
         PseTransactionResult result = buildAdapter().createPseTransaction("idem-1", new BigDecimal("50000"), "1007", PAYER,
