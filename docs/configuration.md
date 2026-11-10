@@ -85,7 +85,6 @@ spring:
         jdbc.time_zone: UTC
 
 mercadopago:
-  base-url: https://api.mercadopago.com
   connect-timeout-millis: 3000
   read-timeout-millis: 5000
 ```

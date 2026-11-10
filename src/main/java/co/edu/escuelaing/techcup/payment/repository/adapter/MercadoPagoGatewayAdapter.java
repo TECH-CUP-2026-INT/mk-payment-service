@@ -1,36 +1,53 @@
 package co.edu.escuelaing.techcup.payment.repository.adapter;
 
 import co.edu.escuelaing.techcup.payment.exception.PaymentGatewayException;
-import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.Payer;
+import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
 import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mercadopago.client.common.IdentificationRequest;
+import com.mercadopago.client.payment.PaymentAdditionalInfoRequest;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.payment.PaymentCreateRequest;
+import com.mercadopago.client.payment.PaymentPayerAddressRequest;
+import com.mercadopago.client.payment.PaymentPayerPhoneRequest;
+import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.client.payment.PaymentTransactionDetailsRequest;
+import com.mercadopago.client.paymentmethod.PaymentMethodClient;
+import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
+import com.mercadopago.net.MPResourceList;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.paymentmethod.PaymentMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Adaptador de Mercado Pago — Payments API ({@code POST /v1/payments}).
+ * Adaptador de Mercado Pago construido sobre el SDK oficial ({@code com.mercadopago:sdk-java}).
  *
  * <p>PSE: {@code payment_method_id: "pse"} + {@code transaction_details.financial_institution}
  * + datos completos del pagador. La respuesta incluye {@code external_resource_url} al que
  * se redirige al usuario para completar la autenticación bancaria.</p>
  *
- * <p>Tarjetas: {@code token} + {@code payment_method_id} + {@code installments}.</p>
+ * <p>Tarjetas: {@code token} + {@code payment_method_id} + {@code installments}. El pagador
+ * se envía con los datos que estén disponibles (a diferencia de PSE, Mercado Pago tolera
+ * datos parciales en tarjeta).</p>
+ *
+ * <p>El access token, los timeouts y los headers se pasan por request vía
+ * {@link MPRequestOptions}; no se muta la configuración global estática del SDK.</p>
  *
  * @see <a href="https://www.mercadopago.com.co/developers/es/docs/checkout-bricks/payment-brick/payment-submission/pse">PSE con Payment Brick</a>
  */
@@ -38,36 +55,30 @@ import java.util.List;
 public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoGatewayAdapter.class);
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String IDEMPOTENCY_HEADER = "X-Idempotency-Key";
+    private static final String TEST_TOKEN_HEADER = "x-test-token";
 
-    private final RestClient restClient;
+    private final PaymentClient paymentClient;
+    private final PaymentMethodClient paymentMethodClient;
     private final String accessToken;
+    private final int connectTimeoutMillis;
+    private final int readTimeoutMillis;
     private final boolean testToken;
 
     @Autowired
     public MercadoPagoGatewayAdapter(
-            @Value("${mercadopago.base-url}") String baseUrl,
+            PaymentClient paymentClient,
+            PaymentMethodClient paymentMethodClient,
             @Value("${mercadopago.access-token}") String accessToken,
             @Value("${mercadopago.connect-timeout-millis}") int connectTimeoutMillis,
             @Value("${mercadopago.read-timeout-millis}") int readTimeoutMillis,
             @Value("${mercadopago.test-token:false}") boolean testToken) {
+        this.paymentClient = paymentClient;
+        this.paymentMethodClient = paymentMethodClient;
         this.accessToken = accessToken;
+        this.connectTimeoutMillis = connectTimeoutMillis;
+        this.readTimeoutMillis = readTimeoutMillis;
         this.testToken = testToken;
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(connectTimeoutMillis);
-        requestFactory.setReadTimeout(readTimeoutMillis);
-        this.restClient = RestClient.builder()
-                .baseUrl(baseUrl)
-                .requestFactory(requestFactory)
-                .build();
-    }
-
-    /** Test-only constructor — Spring uses the @Autowired one above. */
-    MercadoPagoGatewayAdapter(RestClient restClient, String accessToken) {
-        this.restClient = restClient;
-        this.accessToken = accessToken;
-        this.testToken = false;
     }
 
     @Override
@@ -77,40 +88,56 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         log.info("[PSE] Creando pago — idempotencyKey={} financialInstitution={} externalReference={} testToken={}",
                 idempotencyKey, financialInstitution, externalReference, testToken);
         try {
-            var spec = restClient.post()
-                    .uri("/v1/payments")
-                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
-                    .header("X-Idempotency-Key", idempotencyKey);
-            if (testToken) spec = spec.header("x-test-token", "true");
-            log.info("[PSE] Headers salientes — X-Idempotency-Key={} x-test-token={}",
-                    idempotencyKey, testToken);
-            PsePaymentApiResponse response = spec
-                    .body(new CreatePsePaymentApiRequest(
-                            amount,
-                            PaymentMethodId.PSE,
-                            callbackUrl,
-                            notificationUrl,
-                            externalReference,
-                            new PseTransactionDetailsApiRequest(financialInstitution),
-                            new PseAdditionalInfoApiRequest(ipAddress),
-                            new PsePayerApiRequest(
-                                    payer.email(),
-                                    payer.entityType(),
-                                    payer.firstName(),
-                                    payer.lastName(),
-                                    new IdentificationApiRequest(payer.identificationType(), payer.identificationNumber()),
-                                    new AddressApiRequest(payer.addressZipCode(), payer.addressStreetName(),
-                                            payer.addressStreetNumber(), payer.addressNeighborhood(), payer.addressCity(), "1"),
-                                    new PhoneApiRequest(payer.phoneAreaCode(), payer.phoneNumber()))))
-                    .retrieve()
-                    .body(PsePaymentApiResponse.class);
-            if (response == null) {
-                throw new IllegalStateException("Respuesta vacía de Mercado Pago");
-            }
-            return new PseTransactionResult(String.valueOf(response.id()), response.status(), response.externalResourceUrl());
-        } catch (RestClientResponseException ex) {
+            PaymentCreateRequest request = PaymentCreateRequest.builder()
+                    .transactionAmount(amount)
+                    .paymentMethodId(PaymentMethodId.PSE)
+                    .callbackUrl(callbackUrl)
+                    .notificationUrl(notificationUrl)
+                    .externalReference(externalReference)
+                    .transactionDetails(PaymentTransactionDetailsRequest.builder()
+                            .financialInstitution(financialInstitution)
+                            .build())
+                    .additionalInfo(PaymentAdditionalInfoRequest.builder()
+                            .ipAddress(ipAddress)
+                            .build())
+                    .payer(PaymentPayerRequest.builder()
+                            .email(payer.email())
+                            .entityType(payer.entityType())
+                            .firstName(payer.firstName())
+                            .lastName(payer.lastName())
+                            .identification(IdentificationRequest.builder()
+                                    .type(payer.identificationType())
+                                    .number(payer.identificationNumber())
+                                    .build())
+                            .address(PaymentPayerAddressRequest.builder()
+                                    .zipCode(payer.addressZipCode())
+                                    .streetName(payer.addressStreetName())
+                                    .streetNumber(payer.addressStreetNumber())
+                                    .neighborhood(payer.addressNeighborhood())
+                                    .city(payer.addressCity())
+                                    .federalUnit("1")
+                                    .build())
+                            .phone(PaymentPayerPhoneRequest.builder()
+                                    .areaCode(payer.phoneAreaCode())
+                                    .number(payer.phoneNumber())
+                                    .build())
+                            .build())
+                    .build();
+
+            Payment response = paymentClient.create(request, requestOptions(idempotencyKey, true));
+            requirePaymentId(response);
+            return new PseTransactionResult(
+                    String.valueOf(response.getId()),
+                    response.getStatus(),
+                    response.getTransactionDetails() == null
+                            ? null
+                            : response.getTransactionDetails().getExternalResourceUrl());
+        } catch (MPApiException ex) {
             log.error("Mercado Pago respondió {} al crear el pago PSE: {}",
-                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+                    ex.getStatusCode(), apiContent(ex), ex);
+            throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
+        } catch (MPException ex) {
+            log.error("Error de comunicación con Mercado Pago al crear la transacción PSE", ex);
             throw new PaymentGatewayException("No se pudo crear la transacción PSE en Mercado Pago", ex);
         } catch (Exception ex) {
             log.error("Error inesperado al crear la transacción PSE en Mercado Pago", ex);
@@ -123,27 +150,26 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             String token, String paymentMethodId, Integer installments, CardPayer payer,
             String notificationUrl, String externalReference) {
         try {
-            CardPaymentApiResponse response = restClient.post()
-                    .uri("/v1/payments")
-                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
-                    .header("X-Idempotency-Key", idempotencyKey)
-                    .body(new CreateCardPaymentApiRequest(
-                            amount,
-                            token,
-                            paymentMethodId,
-                            installments != null ? installments : 1,
-                            notificationUrl,
-                            externalReference,
-                            toCardPayerApiRequest(payer)))
-                    .retrieve()
-                    .body(CardPaymentApiResponse.class);
-            if (response == null) {
-                throw new IllegalStateException("Respuesta vacía de Mercado Pago");
-            }
-            return new CardTransactionResult(String.valueOf(response.id()), response.status(), response.statusDetail());
-        } catch (RestClientResponseException ex) {
+            PaymentCreateRequest request = PaymentCreateRequest.builder()
+                    .transactionAmount(amount)
+                    .token(token)
+                    .paymentMethodId(paymentMethodId)
+                    .installments(installments != null ? installments : 1)
+                    .notificationUrl(notificationUrl)
+                    .externalReference(externalReference)
+                    .payer(toCardPayer(payer))
+                    .build();
+
+            Payment response = paymentClient.create(request, requestOptions(idempotencyKey, false));
+            requirePaymentId(response);
+            return new CardTransactionResult(String.valueOf(response.getId()),
+                    response.getStatus(), response.getStatusDetail());
+        } catch (MPApiException ex) {
             log.error("Mercado Pago respondió {} al crear el pago con tarjeta: {}",
-                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+                    ex.getStatusCode(), apiContent(ex), ex);
+            throw new PaymentGatewayException("No se pudo crear el pago con tarjeta en Mercado Pago", ex);
+        } catch (MPException ex) {
+            log.error("Error de comunicación con Mercado Pago al crear el pago con tarjeta", ex);
             throw new PaymentGatewayException("No se pudo crear el pago con tarjeta en Mercado Pago", ex);
         } catch (Exception ex) {
             log.error("Error inesperado al crear el pago con tarjeta en Mercado Pago", ex);
@@ -151,96 +177,45 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         }
     }
 
-    /**
-     * Builds the card payer payload with only the fields that were actually
-     * provided. Mercado Pago tolerates partial payer data on card payments, but
-     * rejects empty nested objects, so identification/address/phone are sent
-     * only when at least one of their values is present.
-     */
-    private CardPayerApiRequest toCardPayerApiRequest(CardPayer payer) {
-        if (payer == null) {
-            return null;
-        }
-        return new CardPayerApiRequest(
-                blankToNull(payer.email()),
-                buildIdentification(payer.identificationType(), payer.identificationNumber()),
-                blankToNull(payer.entityType()),
-                blankToNull(payer.firstName()),
-                blankToNull(payer.lastName()),
-                buildAddress(payer),
-                buildPhone(payer));
-    }
-
-    private static IdentificationApiRequest buildIdentification(String type, String number) {
-        String safeType = blankToNull(type);
-        String safeNumber = blankToNull(number);
-        return safeType == null || safeNumber == null
-                ? null
-                : new IdentificationApiRequest(safeType, safeNumber);
-    }
-
-    private static AddressApiRequest buildAddress(CardPayer payer) {
-        String zipCode = blankToNull(payer.addressZipCode());
-        String streetName = blankToNull(payer.addressStreetName());
-        String streetNumber = blankToNull(payer.addressStreetNumber());
-        String neighborhood = blankToNull(payer.addressNeighborhood());
-        String city = blankToNull(payer.addressCity());
-        boolean hasAny = zipCode != null || streetName != null || streetNumber != null
-                || neighborhood != null || city != null;
-        return hasAny
-                ? new AddressApiRequest(zipCode, streetName, streetNumber, neighborhood, city, null)
-                : null;
-    }
-
-    private static PhoneApiRequest buildPhone(CardPayer payer) {
-        String areaCode = blankToNull(payer.phoneAreaCode());
-        String number = blankToNull(payer.phoneNumber());
-        return areaCode == null && number == null ? null : new PhoneApiRequest(areaCode, number);
-    }
-
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
-    }
-
     @Override
     public PaymentStatusResult getPaymentStatus(String mpPaymentId) {
         try {
-            PaymentStatusApiResponse response = restClient.get()
-                    .uri("/v1/payments/{id}", mpPaymentId)
-                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
-                    .retrieve()
-                    .body(PaymentStatusApiResponse.class);
-            if (response == null) {
-                throw new IllegalStateException("Respuesta vacía de Mercado Pago");
-            }
-            return new PaymentStatusResult(String.valueOf(response.id()), response.status());
-        } catch (RestClientResponseException ex) {
+            Payment response = paymentClient.get(parsePaymentId(mpPaymentId), requestOptions(null, false));
+            requirePaymentId(response);
+            return new PaymentStatusResult(String.valueOf(response.getId()), response.getStatus());
+        } catch (MPApiException ex) {
             log.error("Mercado Pago respondió {} al consultar el pago {}: {}",
-                    ex.getStatusCode(), mpPaymentId, ex.getResponseBodyAsString(), ex);
-            throw new PaymentGatewayException("No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
+                    ex.getStatusCode(), mpPaymentId, apiContent(ex), ex);
+            throw new PaymentGatewayException(
+                    "No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
+        } catch (MPException ex) {
+            log.error("Error de comunicación con Mercado Pago al consultar el pago {}", mpPaymentId, ex);
+            throw new PaymentGatewayException(
+                    "No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
         } catch (Exception ex) {
             log.error("Error inesperado al consultar el estado del pago {} en Mercado Pago", mpPaymentId, ex);
-            throw new PaymentGatewayException("No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
+            throw new PaymentGatewayException(
+                    "No se pudo consultar el estado del pago %s en Mercado Pago".formatted(mpPaymentId), ex);
         }
     }
 
     @Override
     public List<PaymentMethodInfo> getAvailablePaymentMethods() {
         try {
-            PaymentMethodApiResponse[] response = restClient.get()
-                    .uri("/v1/payment_methods")
-                    .header(AUTHORIZATION_HEADER, BEARER_PREFIX + accessToken)
-                    .retrieve()
-                    .body(PaymentMethodApiResponse[].class);
-            if (response == null) {
+            MPResourceList<PaymentMethod> response = paymentMethodClient.list(requestOptions(null, false));
+            if (response == null || response.getResults() == null) {
                 return List.of();
             }
-            return List.of(response).stream()
-                    .map(pm -> new PaymentMethodInfo(pm.id(), pm.status(), pm.minAllowedAmount(), pm.maxAllowedAmount()))
+            return response.getResults().stream()
+                    .map(pm -> new PaymentMethodInfo(pm.getId(), pm.getStatus(),
+                            pm.getMinAllowedAmount(), pm.getMaxAllowedAmount()))
                     .toList();
-        } catch (RestClientResponseException ex) {
+        } catch (MPApiException ex) {
             log.error("Mercado Pago respondió {} al consultar los medios de pago: {}",
-                    ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
+                    ex.getStatusCode(), apiContent(ex), ex);
+            throw new PaymentGatewayException("No se pudieron consultar los medios de pago de Mercado Pago", ex);
+        } catch (MPException ex) {
+            log.error("Error de comunicación con Mercado Pago al consultar los medios de pago", ex);
             throw new PaymentGatewayException("No se pudieron consultar los medios de pago de Mercado Pago", ex);
         } catch (Exception ex) {
             log.error("Error inesperado al consultar los medios de pago de Mercado Pago", ex);
@@ -248,126 +223,110 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Request DTOs — PSE (Payments API)
-    // -------------------------------------------------------------------------
-
-    private record CreatePsePaymentApiRequest(
-            @JsonProperty("transaction_amount") BigDecimal transactionAmount,
-            @JsonProperty("payment_method_id") String paymentMethodId,
-            @JsonProperty("callback_url") String callbackUrl,
-            @JsonProperty("notification_url") String notificationUrl,
-            @JsonProperty("external_reference") String externalReference,
-            @JsonProperty("transaction_details") PseTransactionDetailsApiRequest transactionDetails,
-            @JsonProperty("additional_info") PseAdditionalInfoApiRequest additionalInfo,
-            @JsonProperty("payer") PsePayerApiRequest payer) {
+    private MPRequestOptions requestOptions(String idempotencyKey, boolean includeTestHeader) {
+        Map<String, String> headers = new HashMap<>();
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            headers.put(IDEMPOTENCY_HEADER, idempotencyKey);
+        }
+        if (includeTestHeader && testToken) {
+            headers.put(TEST_TOKEN_HEADER, "true");
+        }
+        return MPRequestOptions.builder()
+                .accessToken(accessToken)
+                .connectionTimeout(connectTimeoutMillis)
+                .connectionRequestTimeout(connectTimeoutMillis)
+                .socketTimeout(readTimeoutMillis)
+                .customHeaders(headers)
+                .build();
     }
-
-    private record PseTransactionDetailsApiRequest(
-            @JsonProperty("financial_institution") String financialInstitution) {
-    }
-
-    private record PseAdditionalInfoApiRequest(
-            @JsonProperty("ip_address") String ipAddress) {
-    }
-
-    private record PsePayerApiRequest(
-            @JsonProperty("email") String email,
-            @JsonProperty("entity_type") String entityType,
-            @JsonProperty("first_name") String firstName,
-            @JsonProperty("last_name") String lastName,
-            @JsonProperty("identification") IdentificationApiRequest identification,
-            @JsonProperty("address") AddressApiRequest address,
-            @JsonProperty("phone") PhoneApiRequest phone) {
-    }
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private record IdentificationApiRequest(
-            @JsonProperty("type") String type,
-            @JsonProperty("number") String number) {
-    }
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private record AddressApiRequest(
-            @JsonProperty("zip_code") String zipCode,
-            @JsonProperty("street_name") String streetName,
-            @JsonProperty("street_number") String streetNumber,
-            @JsonProperty("neighborhood") String neighborhood,
-            @JsonProperty("city") String city,
-            @JsonProperty("federal_unit") String federalUnit) {
-    }
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private record PhoneApiRequest(
-            @JsonProperty("area_code") String areaCode,
-            @JsonProperty("number") String number) {
-    }
-
-    // -------------------------------------------------------------------------
-    // Request DTOs — Cards (Payments API)
-    // -------------------------------------------------------------------------
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private record CreateCardPaymentApiRequest(
-            @JsonProperty("transaction_amount") BigDecimal transactionAmount,
-            @JsonProperty("token") String token,
-            @JsonProperty("payment_method_id") String paymentMethodId,
-            @JsonProperty("installments") Integer installments,
-            @JsonProperty("notification_url") String notificationUrl,
-            @JsonProperty("external_reference") String externalReference,
-            @JsonProperty("payer") CardPayerApiRequest payer) {
-    }
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private record CardPayerApiRequest(
-            @JsonProperty("email") String email,
-            @JsonProperty("identification") IdentificationApiRequest identification,
-            @JsonProperty("entity_type") String entityType,
-            @JsonProperty("first_name") String firstName,
-            @JsonProperty("last_name") String lastName,
-            @JsonProperty("address") AddressApiRequest address,
-            @JsonProperty("phone") PhoneApiRequest phone) {
-    }
-
-    // -------------------------------------------------------------------------
-    // Response DTOs
-    // -------------------------------------------------------------------------
 
     /**
-     * Mercado Pago devuelve {@code external_resource_url} ANIDADO dentro de
-     * {@code transaction_details}, no en el nivel raíz de la respuesta. Leerlo
-     * del nivel raíz (como hacía antes) dejaba el redirect PSE en null y el
-     * comprador nunca era redirigido al banco.
+     * Builds the card payer with only the fields that were actually provided. Gson omits
+     * null values when the SDK serializes the request, so empty nested objects are avoided.
      */
-    private record PsePaymentApiResponse(
-            @JsonProperty("id") Long id,
-            @JsonProperty("status") String status,
-            @JsonProperty("transaction_details") PseTransactionDetailsApiResponse transactionDetails) {
+    private static PaymentPayerRequest toCardPayer(CardPayer payer) {
+        if (payer == null) {
+            return null;
+        }
+        var builder = PaymentPayerRequest.builder()
+                .email(blankToNull(payer.email()))
+                .entityType(blankToNull(payer.entityType()))
+                .firstName(blankToNull(payer.firstName()))
+                .lastName(blankToNull(payer.lastName()));
 
-        String externalResourceUrl() {
-            return transactionDetails == null ? null : transactionDetails.externalResourceUrl();
+        String identificationType = blankToNull(payer.identificationType());
+        String identificationNumber = blankToNull(payer.identificationNumber());
+        if (identificationType != null && identificationNumber != null) {
+            builder.identification(IdentificationRequest.builder()
+                    .type(identificationType)
+                    .number(identificationNumber)
+                    .build());
+        }
+
+        PaymentPayerAddressRequest address = buildAddress(payer);
+        if (address != null) {
+            builder.address(address);
+        }
+
+        PaymentPayerPhoneRequest phone = buildPhone(payer);
+        if (phone != null) {
+            builder.phone(phone);
+        }
+
+        return builder.build();
+    }
+
+    private static PaymentPayerAddressRequest buildAddress(CardPayer payer) {
+        String zipCode = blankToNull(payer.addressZipCode());
+        String streetName = blankToNull(payer.addressStreetName());
+        String streetNumber = blankToNull(payer.addressStreetNumber());
+        String neighborhood = blankToNull(payer.addressNeighborhood());
+        String city = blankToNull(payer.addressCity());
+        boolean hasAny = zipCode != null || streetName != null || streetNumber != null
+                || neighborhood != null || city != null;
+        if (!hasAny) {
+            return null;
+        }
+        return PaymentPayerAddressRequest.builder()
+                .zipCode(zipCode)
+                .streetName(streetName)
+                .streetNumber(streetNumber)
+                .neighborhood(neighborhood)
+                .city(city)
+                .build();
+    }
+
+    private static PaymentPayerPhoneRequest buildPhone(CardPayer payer) {
+        String areaCode = blankToNull(payer.phoneAreaCode());
+        String number = blankToNull(payer.phoneNumber());
+        if (areaCode == null && number == null) {
+            return null;
+        }
+        return PaymentPayerPhoneRequest.builder()
+                .areaCode(areaCode)
+                .number(number)
+                .build();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private static Long parsePaymentId(String mpPaymentId) {
+        try {
+            return Long.valueOf(mpPaymentId);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("mpPaymentId inválido: " + mpPaymentId, ex);
         }
     }
 
-    private record PseTransactionDetailsApiResponse(
-            @JsonProperty("external_resource_url") String externalResourceUrl) {
+    private static void requirePaymentId(Payment payment) {
+        if (payment == null || payment.getId() == null) {
+            throw new IllegalStateException("Respuesta vacía de Mercado Pago");
+        }
     }
 
-    private record CardPaymentApiResponse(
-            @JsonProperty("id") Long id,
-            @JsonProperty("status") String status,
-            @JsonProperty("status_detail") String statusDetail) {
-    }
-
-    private record PaymentStatusApiResponse(
-            @JsonProperty("id") Long id,
-            @JsonProperty("status") String status) {
-    }
-
-    private record PaymentMethodApiResponse(
-            String id,
-            String status,
-            @JsonProperty("min_allowed_amount") BigDecimal minAllowedAmount,
-            @JsonProperty("max_allowed_amount") BigDecimal maxAllowedAmount) {
+    private static String apiContent(MPApiException ex) {
+        return ex.getApiResponse() == null ? null : ex.getApiResponse().getContent();
     }
 }

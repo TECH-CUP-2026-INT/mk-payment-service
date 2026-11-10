@@ -16,7 +16,7 @@ The service talks to exactly two external systems: it is consumed by **`mk-tourn
 
 ## Mercado Pago (outbound)
 
-Mercado Pago is the payment gateway. This service calls it through `MercadoPagoGatewayAdapter`, built on Spring's `RestClient` and configured with `mercadopago.base-url` / `connect-timeout-millis` / `read-timeout-millis` (see [Configuration](configuration.md)).
+Mercado Pago is the payment gateway. This service calls it through `MercadoPagoGatewayAdapter`, built on the official Mercado Pago Java SDK (`com.mercadopago:sdk-java`) and configured with `mercadopago.access-token` / `connect-timeout-millis` / `read-timeout-millis` (see [Configuration](configuration.md)).
 
 | Endpoint | Used by | Purpose |
 |----------|---------|---------|
