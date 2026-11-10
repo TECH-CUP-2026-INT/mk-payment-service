@@ -8,11 +8,12 @@ import java.util.List;
 public interface PaymentGatewayPort {
 
     PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
-            String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl);
+            String financialInstitution, Payer payer, String ipAddress, String callbackUrl,
+            String notificationUrl, String externalReference);
 
     CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
-            String token, String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber, String notificationUrl);
+            String token, String paymentMethodId, Integer installments, CardPayer payer,
+            String notificationUrl, String externalReference);
 
     PaymentStatusResult getPaymentStatus(String mpPaymentId);
 

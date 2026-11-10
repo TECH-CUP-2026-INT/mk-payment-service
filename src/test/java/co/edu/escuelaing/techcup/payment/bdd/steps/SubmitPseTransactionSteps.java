@@ -72,7 +72,7 @@ public class SubmitPseTransactionSteps {
 
     @Given("Mercado Pago acepta la transacción PSE con referencia {string} y url {string}")
     public void mercadoPagoAceptaLaTransaccion(String mpPaymentId, String url) {
-        when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
+        when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PseTransactionResult(mpPaymentId, "pending", url));
     }
 

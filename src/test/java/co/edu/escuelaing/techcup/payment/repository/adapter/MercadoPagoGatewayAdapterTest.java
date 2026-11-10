@@ -2,6 +2,8 @@ package co.edu.escuelaing.techcup.payment.repository.adapter;
 
 import co.edu.escuelaing.techcup.payment.exception.PaymentGatewayException;
 import co.edu.escuelaing.techcup.payment.service.Payer;
+import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
+import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
@@ -28,6 +30,9 @@ class MercadoPagoGatewayAdapterTest {
     private static final Payer PAYER = new Payer("payer@test.com", "CC", "123456789", "individual",
             "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
 
+    private static final CardPayer CARD_PAYER = new CardPayer("payer@test.com", "CC", "123456789",
+            "individual", "Juan", "Pérez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "12345");
+
     private RestClient.Builder builder;
     private MockRestServiceServer server;
 
@@ -50,6 +55,7 @@ class MercadoPagoGatewayAdapterTest {
                 .andExpect(jsonPath("$.transaction_details.financial_institution").value("1007"))
                 .andExpect(jsonPath("$.callback_url").value("https://frontend.test/checkout/pse-return"))
                 .andExpect(jsonPath("$.notification_url").value("https://backend.test/payment-orders/webhook"))
+                .andExpect(jsonPath("$.external_reference").value("enr-1"))
                 .andExpect(jsonPath("$.additional_info.ip_address").value("200.10.20.30"))
                 .andExpect(jsonPath("$.payer.email").value("payer@test.com"))
                 .andExpect(jsonPath("$.payer.entity_type").value("individual"))
@@ -70,7 +76,8 @@ class MercadoPagoGatewayAdapterTest {
                         """, MediaType.APPLICATION_JSON));
 
         PseTransactionResult result = buildAdapter().createPseTransaction("idem-1", new BigDecimal("50000"), "1007", PAYER,
-                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook");
+                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook",
+                "enr-1");
 
         assertThat(result.mpPaymentId()).isEqualTo("123456");
         assertThat(result.status()).isEqualTo("pending");
@@ -87,7 +94,8 @@ class MercadoPagoGatewayAdapterTest {
                         """, MediaType.APPLICATION_JSON));
 
         PseTransactionResult result = buildAdapter().createPseTransaction("idem-3", new BigDecimal("30000"), "1007", PAYER,
-                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook");
+                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook",
+                "enr-1");
 
         assertThat(result.mpPaymentId()).isEqualTo("789");
         assertThat(result.status()).isEqualTo("pending");
@@ -104,7 +112,8 @@ class MercadoPagoGatewayAdapterTest {
                         .contentType(MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> buildAdapter().createPseTransaction("idem-4", new BigDecimal("10000"), "1007", PAYER,
-                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook"))
+                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook",
+                "enr-1"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("No se pudo crear la transacción PSE en Mercado Pago");
         server.verify();
@@ -117,9 +126,66 @@ class MercadoPagoGatewayAdapterTest {
                 .andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> buildAdapter().createPseTransaction("idem-5", new BigDecimal("10000"), "1007", PAYER,
-                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook"))
+                "200.10.20.30", "https://frontend.test/checkout/pse-return", "https://backend.test/payment-orders/webhook",
+                "enr-1"))
                 .isInstanceOf(PaymentGatewayException.class)
                 .hasMessageContaining("No se pudo crear la transacción PSE en Mercado Pago");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("createCardTransaction envía external_reference y los datos completos del pagador")
+    void createsCardPaymentWithExternalReferenceAndPayerData() {
+        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
+                .andExpect(jsonPath("$.token").value("tok-visa"))
+                .andExpect(jsonPath("$.payment_method_id").value("visa"))
+                .andExpect(jsonPath("$.installments").value(1))
+                .andExpect(jsonPath("$.notification_url").value("https://backend.test/payment-orders/webhook"))
+                .andExpect(jsonPath("$.external_reference").value("enr-1"))
+                .andExpect(jsonPath("$.payer.email").value("payer@test.com"))
+                .andExpect(jsonPath("$.payer.identification.type").value("CC"))
+                .andExpect(jsonPath("$.payer.identification.number").value("123456789"))
+                .andExpect(jsonPath("$.payer.entity_type").value("individual"))
+                .andExpect(jsonPath("$.payer.first_name").value("Juan"))
+                .andExpect(jsonPath("$.payer.last_name").value("Pérez"))
+                .andExpect(jsonPath("$.payer.address.zip_code").value("11001"))
+                .andExpect(jsonPath("$.payer.address.street_name").value("Calle 1"))
+                .andExpect(jsonPath("$.payer.address.street_number").value("123"))
+                .andExpect(jsonPath("$.payer.address.neighborhood").value("Centro"))
+                .andExpect(jsonPath("$.payer.address.city").value("Bogotá"))
+                .andExpect(jsonPath("$.payer.phone.area_code").value("601"))
+                .andExpect(jsonPath("$.payer.phone.number").value("12345"))
+                .andRespond(withSuccess("""
+                        {"id": 555, "status": "approved", "status_detail": "accredited"}
+                        """, MediaType.APPLICATION_JSON));
+
+        CardTransactionResult result = buildAdapter().createCardTransaction("idem-card", new BigDecimal("50000"),
+                "tok-visa", "visa", 1, CARD_PAYER, "https://backend.test/payment-orders/webhook", "enr-1");
+
+        assertThat(result.mpPaymentId()).isEqualTo("555");
+        assertThat(result.status()).isEqualTo("approved");
+        assertThat(result.statusDetail()).isEqualTo("accredited");
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("createCardTransaction omite los datos del pagador que no vienen informados")
+    void omitsMissingCardPayerData() {
+        CardPayer partialPayer = new CardPayer("payer@test.com", null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        server.expect(requestTo("https://api.mercadopago.com/v1/payments"))
+                .andExpect(jsonPath("$.external_reference").value("enr-1"))
+                .andExpect(jsonPath("$.payer.email").value("payer@test.com"))
+                .andExpect(jsonPath("$.payer.identification").doesNotExist())
+                .andExpect(jsonPath("$.payer.address").doesNotExist())
+                .andExpect(jsonPath("$.payer.phone").doesNotExist())
+                .andRespond(withSuccess("""
+                        {"id": 556, "status": "approved", "status_detail": "accredited"}
+                        """, MediaType.APPLICATION_JSON));
+
+        buildAdapter().createCardTransaction("idem-card-2", new BigDecimal("50000"),
+                "tok-visa", "visa", 1, partialPayer, "https://backend.test/payment-orders/webhook", "enr-1");
+
         server.verify();
     }
 

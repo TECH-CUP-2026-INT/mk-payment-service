@@ -48,7 +48,8 @@ public class SubmitPseTransactionService implements SubmitPseTransactionUseCase 
         PseTransactionResult result;
         try {
             result = paymentGateway.createPseTransaction(paymentOrder.getIdempotencyKey(), paymentOrder.getAmount(),
-                    financialInstitution, payer, ipAddress, callbackUrl, notificationUrl);
+                    financialInstitution, payer, ipAddress, callbackUrl, notificationUrl,
+                    paymentOrder.getEnrollmentId());
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de transacción PSE", ex);
         }

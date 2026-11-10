@@ -6,6 +6,7 @@ import co.edu.escuelaing.techcup.payment.exception.PaymentOrderNotFoundException
 import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
+import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
 import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
@@ -42,7 +43,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
     @Override
     public PaymentOrder submit(String enrollmentId, String paymentMethodId, String token,
             Integer installments, String payerEmail, String financialInstitution,
-            String identificationType, String identificationNumber, Payer payer, String ipAddress) {
+            String identificationType, String identificationNumber, Payer payer,
+            CardPayer cardPayer, String ipAddress) {
 
         PaymentOrder paymentOrder = paymentOrderRepository.findByEnrollmentId(enrollmentId)
                 .orElseThrow(() -> new PaymentOrderNotFoundException(
@@ -54,7 +56,7 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
             return submitPse(paymentOrder, financialInstitution, payer, ipAddress);
         }
         return submitCard(paymentOrder, token, paymentMethodId, installments, payerEmail,
-                identificationType, identificationNumber);
+                identificationType, identificationNumber, cardPayer);
     }
 
     private PaymentOrder submitPse(PaymentOrder paymentOrder, String financialInstitution,
@@ -69,7 +71,8 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
         PseTransactionResult result;
         try {
             result = paymentGateway.createPseTransaction(paymentOrder.getIdempotencyKey(),
-                    paymentOrder.getAmount(), financialInstitution, payer, ipAddress, callbackUrl, notificationUrl);
+                    paymentOrder.getAmount(), financialInstitution, payer, ipAddress, callbackUrl,
+                    notificationUrl, paymentOrder.getEnrollmentId());
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de transacción PSE", ex);
         }
@@ -80,16 +83,20 @@ public class SubmitBrickPaymentService implements SubmitBrickPaymentUseCase {
 
     private PaymentOrder submitCard(PaymentOrder paymentOrder, String token,
             String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber) {
+            String identificationType, String identificationNumber, CardPayer cardPayer) {
 
         paymentOrder.startCardTransaction();
+
+        CardPayer effectivePayer = cardPayer != null ? cardPayer
+                : new CardPayer(payerEmail, identificationType, identificationNumber,
+                        null, null, null, null, null, null, null, null, null, null);
 
         CardTransactionResult result;
         try {
             result = paymentGateway.createCardTransaction(paymentOrder.getIdempotencyKey(),
                     paymentOrder.getAmount(), token, paymentMethodId,
-                    installments != null ? installments : 1, payerEmail,
-                    identificationType, identificationNumber, notificationUrl);
+                    installments != null ? installments : 1, effectivePayer,
+                    notificationUrl, paymentOrder.getEnrollmentId());
         } catch (Exception ex) {
             throw new PaymentGatewayException("Mercado Pago rechazó la solicitud de pago con tarjeta", ex);
         }

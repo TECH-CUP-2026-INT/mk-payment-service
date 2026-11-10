@@ -10,6 +10,7 @@ import co.edu.escuelaing.techcup.payment.dto.response.SubmitBrickPaymentResponse
 import co.edu.escuelaing.techcup.payment.mapper.PaymentOrderRestMapper;
 import co.edu.escuelaing.techcup.payment.service.Payer;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
+import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
 import co.edu.escuelaing.techcup.payment.service.ports.CreatePaymentOrderUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.GetPaymentOrderStatusUseCase;
 import co.edu.escuelaing.techcup.payment.service.ports.ProcessPaymentWebhookUseCase;
@@ -107,7 +108,7 @@ public class PaymentOrderController {
                 enrollmentId, request.paymentMethodId(), request.token(),
                 request.installments(), request.payerEmail(), request.financialInstitution(),
                 request.identificationType(), request.identificationNumber(),
-                buildPayerForPse(request), resolveClientIp(httpRequest));
+                buildPayerForPse(request), buildCardPayer(request), resolveClientIp(httpRequest));
         return ResponseEntity.ok(new SubmitBrickPaymentResponse(
                 paymentOrder.getStatus().name(),
                 paymentOrder.getExternalResourceUrl(),
@@ -164,6 +165,32 @@ public class PaymentOrderController {
                 request.identificationType(),
                 request.identificationNumber(),
                 entityType,
+                request.firstName(),
+                request.lastName(),
+                request.addressZipCode(),
+                request.addressStreetName(),
+                request.addressStreetNumber(),
+                request.addressNeighborhood(),
+                request.addressCity(),
+                request.phoneAreaCode(),
+                request.phoneNumber());
+    }
+
+    /**
+     * Card payments tolerate partial payer data, so the record is always built
+     * for non-PSE payments and the adapter only sends the fields that are
+     * actually present. Some of these fields (name, address, phone) come from
+     * the Brick's payer form; the rest may be null.
+     */
+    private CardPayer buildCardPayer(SubmitBrickPaymentRequest request) {
+        if ("pse".equalsIgnoreCase(request.paymentMethodId())) {
+            return null;
+        }
+        return new CardPayer(
+                request.payerEmail(),
+                request.identificationType(),
+                request.identificationNumber(),
+                request.entityType(),
                 request.firstName(),
                 request.lastName(),
                 request.addressZipCode(),

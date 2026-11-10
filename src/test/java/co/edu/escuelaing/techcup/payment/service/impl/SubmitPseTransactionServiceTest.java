@@ -73,7 +73,7 @@ class SubmitPseTransactionServiceTest {
         void submitsSuccessfully() {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().plusMinutes(60));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
-            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
+            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(new PseTransactionResult("mp-1", "pending", "https://mp.test/ticket/1"));
 
             PaymentOrder result = service.submit("enr-1", PAYER, "1007", IP_ADDRESS);
@@ -163,7 +163,7 @@ class SubmitPseTransactionServiceTest {
         void wrapsGatewayFailure() {
             PaymentOrder order = orderWith(PaymentOrderStatus.PENDING, LocalDateTime.now().plusMinutes(60));
             when(paymentOrderRepository.findByEnrollmentId("enr-1")).thenReturn(Optional.of(order));
-            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any()))
+            when(paymentGateway.createPseTransaction(any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenThrow(new RuntimeException("Mercado Pago no disponible"));
 
             assertThatThrownBy(() -> service.submit("enr-1", PAYER, "1007", IP_ADDRESS))

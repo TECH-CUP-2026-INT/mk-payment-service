@@ -94,7 +94,7 @@ class PaymentOrderControllerTest {
     @DisplayName("POST /payment-orders/{enrollmentId}/pay envía el pago y devuelve 200")
     void submitsBrickPayment() throws Exception {
         when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), any()))
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), any()))
                 .thenReturn(anOrder());
 
         mockMvc.perform(post("/payment-orders/enr-1/pay")
@@ -107,7 +107,7 @@ class PaymentOrderControllerTest {
     @DisplayName("POST /payment-orders/{enrollmentId}/pay usa el primer IP de X-Forwarded-For")
     void submitsBrickPaymentHonoringForwardedFor() throws Exception {
         when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("203.0.113.5")))
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("203.0.113.5")))
                 .thenReturn(anOrder());
 
         mockMvc.perform(post("/payment-orders/enr-1/pay")
@@ -117,14 +117,14 @@ class PaymentOrderControllerTest {
                 .andExpect(status().isOk());
 
         verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("203.0.113.5"));
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("203.0.113.5"));
     }
 
     @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pay despoja el puerto que Azure agrega a X-Forwarded-For")
     void submitsBrickPaymentStrippingForwardedForPort() throws Exception {
         when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("203.0.113.5")))
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("203.0.113.5")))
                 .thenReturn(anOrder());
 
         mockMvc.perform(post("/payment-orders/enr-1/pay")
@@ -134,14 +134,14 @@ class PaymentOrderControllerTest {
                 .andExpect(status().isOk());
 
         verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("203.0.113.5"));
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("203.0.113.5"));
     }
 
     @Test
     @DisplayName("POST /payment-orders/{enrollmentId}/pay despoja el puerto de una IPv6 entre corchetes")
     void submitsBrickPaymentStrippingIpv6Port() throws Exception {
         when(submitBrickPaymentUseCase.submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("2001:db8::1")))
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("2001:db8::1")))
                 .thenReturn(anOrder());
 
         mockMvc.perform(post("/payment-orders/enr-1/pay")
@@ -151,7 +151,7 @@ class PaymentOrderControllerTest {
                 .andExpect(status().isOk());
 
         verify(submitBrickPaymentUseCase).submit(eq("enr-1"), eq("pse"), isNull(), isNull(),
-                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), eq("2001:db8::1"));
+                eq("payer@test.com"), eq("1007"), eq("CC"), eq("123456789"), any(), isNull(), eq("2001:db8::1"));
     }
 
     @Test
@@ -166,7 +166,7 @@ class PaymentOrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 
-        verify(submitBrickPaymentUseCase, never()).submit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(submitBrickPaymentUseCase, never()).submit(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

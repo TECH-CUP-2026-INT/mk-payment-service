@@ -2,6 +2,7 @@ package co.edu.escuelaing.techcup.payment.service.impl;
 
 import co.edu.escuelaing.techcup.payment.service.PaymentOrder;
 import co.edu.escuelaing.techcup.payment.service.PaymentOrderStatus;
+import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
 import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentOrderRepositoryPort;
@@ -23,6 +24,9 @@ import static org.mockito.Mockito.when;
 class SubmitBrickPaymentServiceTest {
 
     private static final String NOTIFICATION_URL = "https://backend.test/payment-orders/webhook";
+
+    private static final CardPayer CARD_PAYER = new CardPayer("payer@test.com", "CC", "12345678",
+            "individual", "Juan", "Perez", "11001", "Calle 1", "123", "Centro", "Bogotá", "601", "1234567");
 
     private PaymentOrderRepositoryPort paymentOrderRepository;
     private PaymentGatewayPort paymentGateway;
@@ -57,13 +61,13 @@ class SubmitBrickPaymentServiceTest {
 
     private void givenMercadoPagoReplies(CardTransactionResult result) {
         when(paymentGateway.createCardTransaction(any(), any(), eq("tok-visa"), eq("visa"), eq(1),
-                eq("payer@test.com"), eq("CC"), eq("12345678"), eq(NOTIFICATION_URL)))
+                eq(CARD_PAYER), eq(NOTIFICATION_URL), eq("enr-1")))
                 .thenReturn(result);
     }
 
     private PaymentOrder submitCard() {
         return service.submit("enr-1", "visa", "tok-visa", 1, "payer@test.com",
-                null, "CC", "12345678", null, "127.0.0.1");
+                null, "CC", "12345678", null, CARD_PAYER, "127.0.0.1");
     }
 
     @Test

@@ -3,11 +3,13 @@ package co.edu.escuelaing.techcup.payment.repository.adapter;
 import co.edu.escuelaing.techcup.payment.exception.PaymentGatewayException;
 import co.edu.escuelaing.techcup.payment.service.PaymentMethodId;
 import co.edu.escuelaing.techcup.payment.service.Payer;
+import co.edu.escuelaing.techcup.payment.service.ports.CardPayer;
 import co.edu.escuelaing.techcup.payment.service.ports.CardTransactionResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentGatewayPort;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentMethodInfo;
 import co.edu.escuelaing.techcup.payment.service.ports.PaymentStatusResult;
 import co.edu.escuelaing.techcup.payment.service.ports.PseTransactionResult;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,9 +72,10 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     @Override
     public PseTransactionResult createPseTransaction(String idempotencyKey, BigDecimal amount,
-            String financialInstitution, Payer payer, String ipAddress, String callbackUrl, String notificationUrl) {
-        log.info("[PSE] Creando pago — idempotencyKey={} financialInstitution={} testToken={}",
-                idempotencyKey, financialInstitution, testToken);
+            String financialInstitution, Payer payer, String ipAddress, String callbackUrl,
+            String notificationUrl, String externalReference) {
+        log.info("[PSE] Creando pago — idempotencyKey={} financialInstitution={} externalReference={} testToken={}",
+                idempotencyKey, financialInstitution, externalReference, testToken);
         try {
             var spec = restClient.post()
                     .uri("/v1/payments")
@@ -87,6 +90,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                             PaymentMethodId.PSE,
                             callbackUrl,
                             notificationUrl,
+                            externalReference,
                             new PseTransactionDetailsApiRequest(financialInstitution),
                             new PseAdditionalInfoApiRequest(ipAddress),
                             new PsePayerApiRequest(
@@ -116,10 +120,8 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
 
     @Override
     public CardTransactionResult createCardTransaction(String idempotencyKey, BigDecimal amount,
-            String token, String paymentMethodId, Integer installments, String payerEmail,
-            String identificationType, String identificationNumber, String notificationUrl) {
-        boolean hasIdentification = identificationType != null && !identificationType.isBlank()
-                && identificationNumber != null && !identificationNumber.isBlank();
+            String token, String paymentMethodId, Integer installments, CardPayer payer,
+            String notificationUrl, String externalReference) {
         try {
             CardPaymentApiResponse response = restClient.post()
                     .uri("/v1/payments")
@@ -131,10 +133,8 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
                             paymentMethodId,
                             installments != null ? installments : 1,
                             notificationUrl,
-                            new CardPayerApiRequest(payerEmail,
-                                    hasIdentification
-                                            ? new IdentificationApiRequest(identificationType, identificationNumber)
-                                            : null)))
+                            externalReference,
+                            toCardPayerApiRequest(payer)))
                     .retrieve()
                     .body(CardPaymentApiResponse.class);
             if (response == null) {
@@ -149,6 +149,57 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             log.error("Error inesperado al crear el pago con tarjeta en Mercado Pago", ex);
             throw new PaymentGatewayException("No se pudo crear el pago con tarjeta en Mercado Pago", ex);
         }
+    }
+
+    /**
+     * Builds the card payer payload with only the fields that were actually
+     * provided. Mercado Pago tolerates partial payer data on card payments, but
+     * rejects empty nested objects, so identification/address/phone are sent
+     * only when at least one of their values is present.
+     */
+    private CardPayerApiRequest toCardPayerApiRequest(CardPayer payer) {
+        if (payer == null) {
+            return null;
+        }
+        return new CardPayerApiRequest(
+                blankToNull(payer.email()),
+                buildIdentification(payer.identificationType(), payer.identificationNumber()),
+                blankToNull(payer.entityType()),
+                blankToNull(payer.firstName()),
+                blankToNull(payer.lastName()),
+                buildAddress(payer),
+                buildPhone(payer));
+    }
+
+    private static IdentificationApiRequest buildIdentification(String type, String number) {
+        String safeType = blankToNull(type);
+        String safeNumber = blankToNull(number);
+        return safeType == null || safeNumber == null
+                ? null
+                : new IdentificationApiRequest(safeType, safeNumber);
+    }
+
+    private static AddressApiRequest buildAddress(CardPayer payer) {
+        String zipCode = blankToNull(payer.addressZipCode());
+        String streetName = blankToNull(payer.addressStreetName());
+        String streetNumber = blankToNull(payer.addressStreetNumber());
+        String neighborhood = blankToNull(payer.addressNeighborhood());
+        String city = blankToNull(payer.addressCity());
+        boolean hasAny = zipCode != null || streetName != null || streetNumber != null
+                || neighborhood != null || city != null;
+        return hasAny
+                ? new AddressApiRequest(zipCode, streetName, streetNumber, neighborhood, city, null)
+                : null;
+    }
+
+    private static PhoneApiRequest buildPhone(CardPayer payer) {
+        String areaCode = blankToNull(payer.phoneAreaCode());
+        String number = blankToNull(payer.phoneNumber());
+        return areaCode == null && number == null ? null : new PhoneApiRequest(areaCode, number);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     @Override
@@ -206,6 +257,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("payment_method_id") String paymentMethodId,
             @JsonProperty("callback_url") String callbackUrl,
             @JsonProperty("notification_url") String notificationUrl,
+            @JsonProperty("external_reference") String externalReference,
             @JsonProperty("transaction_details") PseTransactionDetailsApiRequest transactionDetails,
             @JsonProperty("additional_info") PseAdditionalInfoApiRequest additionalInfo,
             @JsonProperty("payer") PsePayerApiRequest payer) {
@@ -229,11 +281,13 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("phone") PhoneApiRequest phone) {
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private record IdentificationApiRequest(
             @JsonProperty("type") String type,
             @JsonProperty("number") String number) {
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private record AddressApiRequest(
             @JsonProperty("zip_code") String zipCode,
             @JsonProperty("street_name") String streetName,
@@ -243,6 +297,7 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
             @JsonProperty("federal_unit") String federalUnit) {
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private record PhoneApiRequest(
             @JsonProperty("area_code") String areaCode,
             @JsonProperty("number") String number) {
@@ -252,18 +307,26 @@ public class MercadoPagoGatewayAdapter implements PaymentGatewayPort {
     // Request DTOs — Cards (Payments API)
     // -------------------------------------------------------------------------
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private record CreateCardPaymentApiRequest(
             @JsonProperty("transaction_amount") BigDecimal transactionAmount,
             @JsonProperty("token") String token,
             @JsonProperty("payment_method_id") String paymentMethodId,
             @JsonProperty("installments") Integer installments,
             @JsonProperty("notification_url") String notificationUrl,
+            @JsonProperty("external_reference") String externalReference,
             @JsonProperty("payer") CardPayerApiRequest payer) {
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private record CardPayerApiRequest(
             @JsonProperty("email") String email,
-            @JsonProperty("identification") IdentificationApiRequest identification) {
+            @JsonProperty("identification") IdentificationApiRequest identification,
+            @JsonProperty("entity_type") String entityType,
+            @JsonProperty("first_name") String firstName,
+            @JsonProperty("last_name") String lastName,
+            @JsonProperty("address") AddressApiRequest address,
+            @JsonProperty("phone") PhoneApiRequest phone) {
     }
 
     // -------------------------------------------------------------------------
