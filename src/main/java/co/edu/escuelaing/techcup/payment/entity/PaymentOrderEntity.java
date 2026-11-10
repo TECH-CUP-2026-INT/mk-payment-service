@@ -67,25 +67,25 @@ public class PaymentOrderEntity {
     @Column(length = 32)
     private String payerLastName;
 
-    @Column(length = 5)
+    @Column(length = 10)
     private String payerAddressZipCode;
 
-    @Column(length = 18)
+    @Column(length = 50)
     private String payerAddressStreetName;
 
-    @Column(length = 5)
+    @Column(length = 20)
     private String payerAddressStreetNumber;
 
-    @Column(length = 18)
+    @Column(length = 50)
     private String payerAddressNeighborhood;
 
-    @Column(length = 18)
+    @Column(length = 50)
     private String payerAddressCity;
 
-    @Column(length = 3)
+    @Column(length = 5)
     private String payerPhoneAreaCode;
 
-    @Column(length = 5)
+    @Column(length = 20)
     private String payerPhoneNumber;
 
     private LocalDateTime expiresAt;
